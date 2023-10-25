@@ -510,6 +510,16 @@ class RobotCommandHandle(adpt.RobotCommandHandle):
         if (self.action_execution):
             self.check_perform_action()
 
+    # Get start sets, for update_position(startsets)
+    def get_start_sets(self):
+        return plan.compute_plan_starts(
+            self.graph,
+            self.current_level,
+            self.position,
+            self.adapter.now(),
+            max_merge_waypoint_distance = 0.5,
+            max_merge_lane_distance = self.config.get('max_merge_lane_distance', 15.0))
+
     def update_state(self):
         self.update_handle.update_battery_soc(self.battery_soc)
         if not self.charger_is_set:
@@ -677,6 +687,9 @@ class RobotCommandHandle(adpt.RobotCommandHandle):
                         return
                 self.node.get_logger().info(
                     f"action [{self.action_category}] is completed")
+                starts = self.get_start_sets()
+                if starts is not None:
+                    self.update_handle.update_position(starts)
                 self.action_execution.finished()
 
             else:
