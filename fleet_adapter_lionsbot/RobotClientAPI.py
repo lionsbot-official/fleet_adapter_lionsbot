@@ -20,7 +20,7 @@ import requests
 import websocket
 
 from threading import Thread
-from typing import Dict, Any, Callable
+from typing import Dict, Any, Callable, Optional
 
 from .models import EqualizerConfig
 from .models import NavigateContent
@@ -288,9 +288,28 @@ class RobotAPI:
             return False
         if mission_status['missionStatus']['activeMissionType'] == 'MOVING':
             return True
+        # The robot's next target waypoint may be too close. We return True in this
+        # case so that the state machine would change to the MOVING state where
+        # navigation_complete() would return True immediately.
         if mission_status['missionStatus']['mission']['status'] == 'CMD_REJECTED':
             return True
         return False
+
+    def is_app_started(self, count: int=1, sleep: float=1.0) -> bool:
+        """
+        This function checks if the mission status stays at APP_STARTED for [count] number
+        of times and sleeps for [sleep] seconds every iteration. If not it returns False immediately.
+        """
+        for i in range(count):
+            mission_status = self.mission_status()
+            if mission_status['missionStatus']['activeMissionType'] == 'MOVING':
+                mission = mission_status['missionStatus'].get('mission', None)
+                if mission is not None:
+                    if mission.get('status', None) != 'APP_STARTED':
+                        return False
+            time.sleep(sleep)
+
+        return True
 
     def start_process(self, process: str):
         ''' Request the robot to begin a process. This is specific to the robot
@@ -364,6 +383,7 @@ class RobotAPI:
         if robot_mission_status is None:
             return False
 
+        # Not exactly sure why to call e stop when status is APP_STARTED
         if robot_mission_status['missionStatus']['mission']['status'] == 'APP_STARTED':
             self.e_stop()
         else:

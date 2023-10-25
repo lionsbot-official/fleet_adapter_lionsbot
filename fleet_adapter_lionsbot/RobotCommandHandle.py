@@ -14,6 +14,11 @@
 
 from rclpy.duration import Duration
 
+from rclpy.qos import QoSProfile
+from rclpy.qos import QoSHistoryPolicy as History
+from rclpy.qos import QoSDurabilityPolicy as Durability
+from rclpy.qos import QoSReliabilityPolicy as Reliability
+
 import rmf_adapter as adpt
 import rmf_adapter.plan as plan
 import rmf_adapter.schedule as schedule
@@ -153,11 +158,23 @@ class RobotCommandHandle(adpt.RobotCommandHandle):
             4.0 / self.update_frequency,
             self.update_status)
 
+        transient_qos = QoSProfile(
+            history=History.KEEP_LAST,
+            depth=1,
+            reliability=Reliability.RELIABLE,
+            durability=Durability.TRANSIENT_LOCAL)
+
         self.estop_pub = self.custom_cmd_node.create_publisher(
             String, '/estop', 10)
 
+        self.clean_info_pub = self.custom_cmd_node.create_publisher(
+            String, '/clean_info', 10)
+
         self.robot_state_subscription = self.custom_cmd_node.create_subscription(
             ApiRequest, 'custom_api_requests', self.api_request_cb, 10)
+
+        self.finish_manual_task_sub = self.custom_cmd_node.create_subscription(
+            String, '/finish_manual_task', self.finish_manual_task_cb, transient_qos)
 
 
         self.initialized = True
@@ -283,7 +300,7 @@ class RobotCommandHandle(adpt.RobotCommandHandle):
                             time.sleep(1.0)
 
                         response = self.api.navigate([x, -y, yaw])
-                        self.node.get_logger().info(f"Success sending navigate command {response}")
+                        self.node.get_logger().info(f"{self.name} Success sending navigate command {response}")
                         time.sleep(1.0)
                         navigate_success = self.api.is_navigating()
                         if navigate_success:
@@ -314,7 +331,7 @@ class RobotCommandHandle(adpt.RobotCommandHandle):
                                         self.path_index, timedelta(seconds=0.0))
 
                 elif self.state == RobotState.MOVING:
-                    self.sleep_for(0.1)
+                    self.sleep_for(0.5)
                     # Check if we have reached the target
                     with self._lock:
                         if (self.api.navigation_completed()):
@@ -339,6 +356,10 @@ class RobotCommandHandle(adpt.RobotCommandHandle):
                                 [x, y, yaw] = self.transforms[self.current_level]["tf"].to_robot_map(
                                     target_pose[:3])
                                 response = self.api.navigate([x, -y, yaw])
+                        elif self.api.is_app_started(10,0.5):
+                                self.node.get_logger().info(
+                                    f"Robot {self.name} is somehow stuck in APP_STARTED stopping robot!")
+                                self.api.stop()
                         else:
                             # Update the lane the robot is on
                             lane = self.get_current_lane()
@@ -423,7 +444,7 @@ class RobotCommandHandle(adpt.RobotCommandHandle):
                     self.node.get_logger().info("Aborting docking")
                     return
                 self.node.get_logger().info("Robot is docking...")
-                self.sleep_for(0.1)
+                self.sleep_for(0.2)
 
             with self._lock:
                 self.on_waypoint = self.dock_waypoint_index
@@ -762,6 +783,10 @@ class RobotCommandHandle(adpt.RobotCommandHandle):
 
     def handle_clean_failed(self):
         print(f"Only cleaned up to {self.latest_clean_percentage}!")
+        clean_info_msg = String()
+        clean_info_msg.data = \
+            f"Robot [{self.name}] only cleaned up to [{self.latest_clean_percentage}]."
+        self.clean_info_pub.publish(clean_info_msg)
         self.latest_clean_percentage = 0
         process = self.current_process
         if self.api.start_process(process):
@@ -769,3 +794,10 @@ class RobotCommandHandle(adpt.RobotCommandHandle):
             self.set_cleaning_trajectory(process)
             return
         print("FAILED TO REDO CLEAN TASK! RETRYING")
+
+    def finish_manual_task_cb(self, msg: String):
+        if msg.data != self.name:
+            return
+        self.custom_cmd_node.get_logger().info(
+            f"Robot {self.name} is finishing manual task.")
+        self.manual_mode = False

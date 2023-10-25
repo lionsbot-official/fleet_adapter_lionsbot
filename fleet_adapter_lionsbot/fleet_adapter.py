@@ -203,7 +203,11 @@ def initialize_fleet(config_yaml, nav_graph_path, node, use_sim_time, server_uri
             for robot_name in list(missing_robots.keys()):
                 api = api_map[robot_name]
                 node.get_logger().debug(f"Connecting to robot: {robot_name}")
-                current_level = api.current_map_info()['level']
+                current_map_info = None
+                while current_map_info is None:
+                    current_map_info = api.current_map_info()
+                    current_level = current_map_info['level']
+
                 robot_position = api.position()
 
                 x,y,_ = robot_map_transforms[current_level]["tf"].to_rmf_map(
@@ -352,7 +356,7 @@ def main(argv=sys.argv):
         custom_cmd_node)
 
     # Create executor for the command handle node
-    rclpy_executor = rclpy.executors.MultiThreadedExecutor()
+    rclpy_executor = rclpy.executors.SingleThreadedExecutor()
     rclpy_executor.add_node(node)
     rclpy_executor.add_node(custom_cmd_node)
 
