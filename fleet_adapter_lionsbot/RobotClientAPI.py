@@ -158,7 +158,7 @@ class RobotAPI:
             self.request_token()
 
     def robot(self) -> Dict[str, Any]:
-        self.request_token()
+        self.refresh_expired_token()
         path = f'/openapi/v1/robot/{self.robot_id}/position'
         headers = {'Authorization': f'Bearer {self.token}'}
 
