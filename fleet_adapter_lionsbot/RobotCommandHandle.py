@@ -293,13 +293,13 @@ class RobotCommandHandle(adpt.RobotCommandHandle):
                                         self.on_waypoint = None  # still on a lane
                                         self.next_arrival_estimator(
                                                 self.path_index, timedelta(seconds=0.0))
-                        else:
-                            while self.api.is_docked():
-                                self.node.get_logger().info(
-                                    "Robot is docked attemtping to undock"
-                                )
-                                success = self.api.undock()
-                                time.sleep(1.0)
+                            else:
+                                while self.api.is_docked():
+                                    self.node.get_logger().info(
+                                        "Robot is docked attemtping to undock"
+                                    )
+                                    success = self.api.undock()
+                                    time.sleep(1.0)
                 # ------------------------ #
 
                     else:
