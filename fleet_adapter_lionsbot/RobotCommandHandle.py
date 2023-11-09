@@ -106,6 +106,8 @@ class RobotCommandHandle(adpt.RobotCommandHandle):
         self.latest_clean_percentage = None
         self.current_process = None
         self.clean_percentage_threshold = 0 # Default value
+        self.is_paused = False
+        self.interruption = None
 
         if 'clean_percentage_threshold' in self.config:
             self.clean_percentage_threshold =\
@@ -170,12 +172,14 @@ class RobotCommandHandle(adpt.RobotCommandHandle):
         self.clean_info_pub = self.custom_cmd_node.create_publisher(
             String, '/clean_info', 10)
 
-        self.robot_state_subscription = self.custom_cmd_node.create_subscription(
-            ApiRequest, 'custom_api_requests', self.api_request_cb, 10)
+        self.custom_api_request_subscription = self.custom_cmd_node.create_subscription(
+            ApiRequest, '/custom_api_requests', self.api_request_cb, 10)
+
+        self.custom_api_response_pub = self.custom_cmd_node.create_publisher(
+            ApiResponse, '/custom_api_responses', 10)
 
         self.finish_manual_task_sub = self.custom_cmd_node.create_subscription(
             String, '/finish_manual_task', self.finish_manual_task_cb, transient_qos)
-
 
         self.initialized = True
 
@@ -190,19 +194,37 @@ class RobotCommandHandle(adpt.RobotCommandHandle):
 
         request_type = payload.get('type', None)
         if request_type is not None:
-            if request_type == 'pause_task_request' and \
-                    payload['robot_name'] == self.name and payload['fleet'] == self.fleet_name:
+            if not payload['robot_name'] == self.name or not payload['fleet'] == self.fleet_name:
+                return
+            if request_type == 'pause_task_request':
                 self.node.get_logger().info(f'Requesting robot to pause: {self.name}')
-                self.api.pause()
-            elif request_type == 'continue_task_request' and \
-                    payload['robot_name'] == self.name and payload['fleet'] == self.fleet_name:
+                if self.action_execution is not None:
+                    self.node.get_logger().info(f"Pausing robot [{self.name}] action [{self.action_category}]")
+                    self.api.pause()
+                elif self._follow_path_thread is not None:
+                    self.interruption = self.update_handle.interrupt(
+                        ["Interruption"],
+                        lambda: self.node.get_logger().info(f"Interrupting Robot [{self.name}]")
+                    )
+                self.is_paused = True
+            elif request_type == 'resume_task_request':
                 self.node.get_logger().info(f'Requesting robot to resume: {self.name}')
-                if self.api.resume():
-                    self.node.get_logger().info(f'Resuming robot: {self.name}')
+                if self.action_execution is not None:
+                    self.api.resume()
+                    self.node.get_logger().info(f'Resuming robot [{self.name}] action [{self.action_category}]')
+                elif self.interruption is not None:
+                    self.interruption.resume(['Resume'])
+                self.is_paused = False
             elif request_type == 'manual_task' and \
                     payload['robot_name'] == self.name and payload['fleet'] == self.fleet_name:
                 self.node.get_logger().info(f'Requesting robot to stop manual mode: {self.name}')
                 self.manual_mode = False
+            response_msg = ApiResponse()
+            response = {}
+            response['success'] = True
+            response_msg.request_id = msg.request_id
+            response_msg.json_msg = json.dumps(response)
+            self.custom_api_response_pub.publish(response_msg)
 
     def sleep_for(self, seconds):
         goal_time =\
@@ -221,17 +243,17 @@ class RobotCommandHandle(adpt.RobotCommandHandle):
 
     def stop(self):
         # Stop the robot. Tracking variables should remain unchanged.
-        while True:
-            self.node.get_logger().info("Requesting robot to stop...")
-            if self.api.stop():
-                break
-            self.sleep_for(0.1)
         if self._follow_path_thread is not None:
             self._quit_path_event.set()
             if self._follow_path_thread.is_alive():
                 self._follow_path_thread.join()
             self._follow_path_thread = None
             self.clear()
+        while True:
+            self.node.get_logger().info("Requesting robot to stop...")
+            if self.api.stop():
+                break
+            self.sleep_for(0.1)
 
     def follow_new_path(
         self,
