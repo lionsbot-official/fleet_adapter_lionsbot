@@ -335,7 +335,6 @@ def main(argv=sys.argv):
     # ROS 2 node for the command handle
     fleet_name = config_yaml['rmf_fleet']['name']
     node = rclpy.node.Node(f'{fleet_name}_command_handle')
-    custom_cmd_node = rclpy.node.Node(f'{fleet_name}_custom_commnad_node')
 
     # Enable sim time for testing offline
     if args.use_sim_time:
@@ -353,12 +352,11 @@ def main(argv=sys.argv):
         node,
         args.use_sim_time,
         server_uri,
-        custom_cmd_node)
+        node)
 
     # Create executor for the command handle node
     rclpy_executor = rclpy.executors.SingleThreadedExecutor()
     rclpy_executor.add_node(node)
-    rclpy_executor.add_node(custom_cmd_node)
 
     # Start the fleet adapter
     rclpy_executor.spin()
