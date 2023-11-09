@@ -274,31 +274,35 @@ class RobotCommandHandle(adpt.RobotCommandHandle):
                     # ------------------------ #
                     # IMPLEMENT YOUR CODE HERE #
                     # Ensure x, y, theta are in units that api.navigate() #
-                    if self.dist(self.position, target_pose) < 0.5:
-                        self.remaining_waypoints = self.remaining_waypoints[1:]
-                        with self._lock:
-                            self.node.get_logger().info(
-                                f"Too Close! Robot [{self.name}] has reached its target "
-                                f"waypoint")
-                            self.state = RobotState.WAITING
-                            if (self.target_waypoint.graph_index is not None):
-                                self.on_waypoint = \
-                                    self.target_waypoint.graph_index
-                                self.last_known_waypoint_index = \
-                                    self.on_waypoint
-                            else:
-                                self.on_waypoint = None  # still on a lane
-                        self.next_arrival_estimator(
-                                self.path_index, timedelta(seconds=0.0))
-                    # ------------------------ #
-                    else:
-                        while self.api.is_docked():
-                            self.node.get_logger().info(
-                                "Robot is docked attemtping to undock"
-                            )
-                            success = self.api.undock()
-                            time.sleep(1.0)
+                    if self.api.is_docked():
+                        if self.target_waypoint.graph_index is not None:
+                            wp = self.graph.get_waypoint(self.target_waypoint.graph_index)
+                            if wp.charger:
+                                self.remaining_waypoints = self.remaining_waypoints[1:]
+                                with self._lock:
+                                    self.node.get_logger().info(
+                                        f"Robot [{self.name}] Skipping Charger Wayoint!"
+                                        f"waypoint")
+                                    self.state = RobotState.WAITING
+                                    if (self.target_waypoint.graph_index is not None):
+                                        self.on_waypoint = \
+                                            self.target_waypoint.graph_index
+                                        self.last_known_waypoint_index = \
+                                            self.on_waypoint
+                                    else:
+                                        self.on_waypoint = None  # still on a lane
+                                        self.next_arrival_estimator(
+                                                self.path_index, timedelta(seconds=0.0))
+                        else:
+                            while self.api.is_docked():
+                                self.node.get_logger().info(
+                                    "Robot is docked attemtping to undock"
+                                )
+                                success = self.api.undock()
+                                time.sleep(1.0)
+                # ------------------------ #
 
+                    else:
                         response = self.api.navigate([x, -y, yaw])
                         self.node.get_logger().info(f"{self.name} Success sending navigate command {response}")
                         time.sleep(1.0)
@@ -443,14 +447,14 @@ class RobotCommandHandle(adpt.RobotCommandHandle):
                 if self._quit_dock_event.is_set():
                     self.node.get_logger().info("Aborting docking")
                     return
-                self.node.get_logger().info("Robot is docking...")
+                self.node.get_logger().info(f"Robot {self.name} is docking...")
                 self.sleep_for(0.2)
 
             with self._lock:
                 self.on_waypoint = self.dock_waypoint_index
                 self.dock_waypoint_index = None
                 self.docking_finished_callback()
-                self.node.get_logger().info("Docking completed")
+                self.node.get_logger().info(f"[{self.name}] Docking completed")
 
         self._dock_thread = threading.Thread(target=_dock)
         self._dock_thread.start()
