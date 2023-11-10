@@ -1,0 +1,11 @@
+leoScrub:  # name of robot fleet
+  zone_1b:  # name of zone
+    level_name: "L1"
+    path: [ [30.4783, -44.7447, 0.0],
+            [30.4783, -40.6045, 0.0] ]
+    finish_waypoint: "zone_1b"
+  zone_2b:  # name of zone
+    level_name: "L1"
+    path: [ [28.1338, -50.8803, 0.0],
+            [11.1479, -50.8803, 0.0] ]
+    finish_waypoint: "zone_2b"

@@ -1,0 +1,5 @@
+r3:  # name of robot fleet
+  path_238:  # name of zone
+    level_name: "L1"
+    path: [[35.184170220371456, -22.77935104701927, 0.0], [35.184432785619784, -19.804239037270094, 0.0]]
+    finish_waypoint: "path_238"

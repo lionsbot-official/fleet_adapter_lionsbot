@@ -1,0 +1,50 @@
+building_name: office
+levels:
+  L3:
+    lanes:
+    - - 0
+      - 1
+      - {speed_limit: 0, undock_name: zone_1b}
+    - - 1
+      - 0
+      - {dock_name: zone_1b, speed_limit: 0}
+    - - 1
+      - 2
+      - {dock_name: leoscrub_charger, speed_limit: 0}
+    - - 2
+      - 1
+      - {speed_limit: 0, undock_name: leoscrub_charger}
+    - - 2
+      - 3
+      - {speed_limit: 0, undock_name: leoscrub_charger}
+    - - 3
+      - 2
+      - {dock_name: leoscrub_charger, speed_limit: 0}
+    - - 3
+      - 4
+      - {dock_name: zone_2b, speed_limit: 0}
+    - - 4
+      - 3
+      - {speed_limit: 0, undock_name: zone_2b}
+    - - 5
+      - 2
+      - {dock_name: leoscrub_charger, speed_limit: 0}
+    - - 2
+      - 5
+      - {speed_limit: 0, undock_name: leoscrub_charger}
+    vertices:
+    - - 30.47828022212357
+      - -40.60445188348377
+      - {dock_name: zone_1b, is_cleaning_zone: true, name: zone_1b}
+    - - 30.47828022212357
+      - -44.74470926226652
+      - {name: zone_1b_start}
+    - - 31.531352192286008
+      - -49.19832925374219
+      - {dock_name: leoscrub_charger, is_charger: true, is_parking_spot: true, name: leoscrub_charger}
+    - - 28.08840394480452
+      - -50.67784773391925
+      - {name: ''}
+    - - 22.147882845536603
+      - -50.88027140190841
+      - {dock_name: zone_2b, is_cleaning_zone: true, name: zone_2b}

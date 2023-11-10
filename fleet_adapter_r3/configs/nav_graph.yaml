@@ -1,0 +1,78 @@
+building_name: office
+levels:
+  L3:
+    lanes:
+    - - 0
+      - 1
+      - {speed_limit: 0, undock_name: zone_2b}
+    - - 1
+      - 0
+      - {dock_name: zone_2b, speed_limit: 0}
+    - - 2
+      - 3
+      - {dock_name: zone_1b, speed_limit: 0}
+    - - 3
+      - 2
+      - {speed_limit: 0, undock_name: zone_1b}
+    - - 1
+      - 4
+      - {dock_name: r3_charger, speed_limit: 0}
+    - - 4
+      - 1
+      - {speed_limit: 0, undock_name: r3_charger}
+    - - 4
+      - 2
+      - {speed_limit: 0, undock_name: r3_charger}
+    - - 2
+      - 4
+      - {dock_name: r3_charger, speed_limit: 0}
+    - - 5
+      - 6
+      - {dock_name: path_238, speed_limit: 0}
+    - - 6
+      - 5
+      - {speed_limit: 0, undock_name: path_238}
+    - - 7
+      - 5
+      - {speed_limit: 0, undock_name: Dock_547}
+    - - 5
+      - 7
+      - {dock_name: Dock_547, speed_limit: 0}
+    - - 8
+      - 9
+      - {dock_name: leoscrub_charger, speed_limit: 0}
+    - - 9
+      - 8
+      - {speed_limit: 0, undock_name: leoscrub_charger}
+    vertices:
+    - - 22.147882845536603
+      - -50.88027140190841
+      - {dock_name: zone_2b, is_cleaning_zone: true, name: zone_2b}
+    - - 28.08840394480452
+      - -50.67784773391925
+      - {name: ''}
+    - - 30.47828022212357
+      - -44.74470926226652
+      - {name: zone_1b_start}
+    - - 30.47828022212357
+      - -40.60445188348377
+      - {dock_name: zone_1b, is_cleaning_zone: true, name: zone_1b}
+    - - 31.525815221574625
+      - -49.184262355178134
+      - {dock_name: r3_charger, is_charger: true, is_parking_spot: true, name: r3_charger}
+    - - 35.14494887943998
+      - -22.824989516134156
+      - {name: path_238_start}
+    - - 35.18585262703759
+      - -19.718300003476454
+      - {dock_name: path_238, is_cleaning_zone: true, name: path_238}
+    - - 36.38602844069437
+      - -26.251975325528772
+      - {dock_name: Dock_547, is_charger: true, is_holding_point: true, is_parking_spot: true,
+        name: Dock_547}
+    - - 29.062910790008125
+      - -48.83229059536257
+      - {dock_name: ghost_charger, is_charger: true, name: ghost_charger}
+    - - 31.531352192286008
+      - -49.19832925374219
+      - {dock_name: leoscrub_charger, is_charger: true, is_parking_spot: true, name: leoscrub_charger}

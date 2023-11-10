@@ -1,0 +1,75 @@
+# FLEET CONFIG =================================================================
+# RMF Fleet parameters
+
+rmf_fleet:
+  name: "r3"
+  fleet_manager:
+    prefix: ""  # host name
+    user: ""
+    password: ""
+  limits:
+    linear: [0.4, 0.2] # velocity, acceleration
+    angular: [0.3, 0.35] # velocity, acceleration
+  profile: # Robot profile is modelled as a circle
+    footprint: 0.5 # radius in m
+    vicinity: 0.6 # radius in m
+  reversible: False # whether robots in this fleet can reverse
+  battery_system:
+    voltage: 24.0 # V
+    capacity: 40.0 # Ahr
+    charging_current: 26.4 # A
+  mechanical_system:
+    mass: 80.0 # kg
+    moment_of_inertia: 20.0 #kgm^2
+    friction_coefficient: 0.20
+  ambient_system:
+    power: 20.0 # W
+  tool_system:
+    power: 760.0 # W
+  recharge_threshold: 0.01 # Battery level below which robots in this fleet will not operate
+  recharge_soc: 1.0 # Battery level to which robots in this fleet should be charged up to during recharging tasks
+  publish_fleet_state: True
+  account_for_battery_drain: True
+  task_capabilities: # Specify the types of RMF Tasks that robots in this fleet are capable of performing
+    loop: True
+    delivery: False
+    clean: True
+    finishing_request: "charge" # [park, charge, nothing]
+
+robots:
+  # Here the user is expected to append the configuration for each robot in the
+  # fleet.
+  # Configuration for first robot in this fleet
+  R3-XXXXXXX-SCR:  # robot identity name
+    robot_config:
+      max_delay: 10.0 # allowed seconds of delay of the current itinerary before it gets interrupted and replanned
+      dock_home_position: [552.0, 109.0, 2.9668062855]  # robot start-up dock point coordinates
+      dock_home_name: "Dock_547"  # robot start-up dock point name
+    rmf_config:
+      robot_state_update_frequency: 0.5
+      start:
+        building_name: "Office"
+        map_name: "L3"
+        waypoint: "Dock_547"  # robot start-up waypoint name
+        orientation: 2.9668062855  # robot start-up dock point orientation
+      charger:
+        waypoint: "Dock_547"
+
+# Here two methods to specify transformation is shown
+map_transform:
+  L3:  # map transformation
+    transform_values:
+      tx_meters: 36.348
+      ty_meters: 30.733
+      rotation_degrees: -83.036
+      scale: 0.0504489
+  L4:
+    reference_coordinates:
+      rmf: [[20.65, -41.5],
+        [17.3, -44.75],
+        [32.35, -48.85],
+        [32.35, -38.55]]
+      robot: [[182.0, 333.0],
+          [238.0, 418.0],
+          [361.0, 115.0],
+          [155.0, 95.0]]
