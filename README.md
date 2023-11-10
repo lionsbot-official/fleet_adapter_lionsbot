@@ -1,5 +1,5 @@
 # LionsBot Fleet Adapter
-![LionsBot](../lionsbot-banner.png)
+![LionsBot](https://github.com/lionsbot-official/fleet_adapter_lionsbot/blob/main/lionsbot-banner.png)
 
 This repository contains the open source fleet adapter for integrating OpenRMF with LionsBot's robots. The different robot families adapters are in their respective directory.
 
