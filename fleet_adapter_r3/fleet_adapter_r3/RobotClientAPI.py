@@ -601,6 +601,9 @@ class RobotAPI:
         return True
 
     def build_clean_process_content(self, robot_encoding_id: str, map_name: str, clean_zone_name: str):
+        robot_info = self.get_robot_info(robot_encoding_id)
+        robot_type = robot_info['robotType']
+
         map_data = self.get_map(map_name=map_name, robot_name=robot_encoding_id)
         if map_data is None:
             return None
@@ -637,7 +640,7 @@ class RobotAPI:
 
         clean_process_content = CleanProcessContent(
             mode=0,
-            robot_type='Scrub',
+            robot_type=robot_type,
             working_type='point2clean',
             section_id='',
             section_name='',

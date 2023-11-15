@@ -10,7 +10,7 @@ Currently, fleet adapters are developed and has been tested for these supported 
 | Fleet adapter          | Robot family | Robot type |
 |------------------------| ---- |------------|
 | fleet_adapter_leoscrub | Leobot | LeoScrub   |
-| fleet_adapter_r3       | R3 | Scrub      |
+| fleet_adapter_r3       | R3 | Scrub, Vac, Scrub Pro      |
 
 ## RMF Installation 
 
