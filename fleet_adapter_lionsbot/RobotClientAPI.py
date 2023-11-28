@@ -355,7 +355,7 @@ class RobotAPI:
         if status is None:
             return False
         alert_ids = status.get('alertIds', None)
-        if 2202 in alert_ids or 2203 in alert_ids or 2206 in alert_ids:
+        if 2202 in alert_ids or 2203 in alert_ids or 2206 in alert_ids or 3010 in alert_ids:
             return True
         return False
 
