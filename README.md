@@ -60,8 +60,52 @@ rosdep install --from-paths src --ignore-src --rosdistro $ROS_DISTRO -yr
 colcon build --cmake-args -DCMAKE_BUILD_TYPE=Release 
 ```
 
+**Alternatively**, if you like to use **Docker** and avoid the hassle of resolving dependency conflicts, please run the commands below instead:
+
+```bash
+cd $HOME && git clone https://github.com/lionsbot-official/fleet_adapter_lionsbot --branch rmf/22.09 --single-branch --depth 1
+```
+
+Build docker image for `fleet_adapter_r3`:
+```bash
+cd fleet_adapter_lionsbot && docker build -f r3_Dockerfile -t fleet_adapter_lionsbot:r3
+```
+
+Build docker image for `fleet_adapter_leoscrub`:
+```bash
+cd fleet_adapter_lionsbot && docker build -f leoscrub_Dockerfile -t fleet_adapter_lionsbot:leoscrub
+```
+
 ## Running the fleet adapter
 
 ```
 ros2 run fleet_adapter_r3 fleet_adapter_r3 -c config.yaml -n nav_graph.yaml -d dock_summary.yaml
+```
+
+**Alternatively**, if you used the **Docker** instructions above to build, please run the commands below instead:
+
+Build and run docker container for `fleet_adapter_r3`:
+```bash
+docker run -it --rm  \
+--network host \
+-v /dev/shm:/dev/shm \
+--name fleet_adapter_lionsbot_r3_c \
+fleet_adapter_lionsbot:r3 bash -c \
+"ros2 run fleet_adapter_r3 fleet_adapter \
+-c config.yaml \
+-n nav_graph.yaml \
+-d dock_summary.yaml"
+```
+
+Build and run docker container for `fleet_adapter_leoscrub`:
+```bash
+docker run -it --rm  \
+--network host \
+-v /dev/shm:/dev/shm \
+--name fleet_adapter_lionsbot_leoscrub_c \
+fleet_adapter_lionsbot:leoscrub bash -c \
+"ros2 run fleet_adapter_leoscrub fleet_adapter \
+-c config.yaml \
+-n nav_graph.yaml \
+-d dock_summary.yaml"
 ```
