@@ -60,7 +60,7 @@ rosdep install --from-paths src --ignore-src --rosdistro $ROS_DISTRO -yr
 colcon build --cmake-args -DCMAKE_BUILD_TYPE=Release 
 ```
 
-**Alternatively**, if you like to use **Docker** and avoid the hassle of resolving dependency conflicts, please run the commands below instead:
+:whale: **Alternatively**, if you like to use **Docker** and avoid the hassle of resolving dependency conflicts, please run the commands below instead:
 
 ```bash
 cd $HOME && git clone https://github.com/lionsbot-official/fleet_adapter_lionsbot --branch rmf/22.09 --single-branch --depth 1
@@ -82,7 +82,7 @@ cd fleet_adapter_lionsbot && docker build -f leoscrub_Dockerfile -t fleet_adapte
 ros2 run fleet_adapter_r3 fleet_adapter_r3 -c config.yaml -n nav_graph.yaml -d dock_summary.yaml
 ```
 
-**Alternatively**, if you used the **Docker** instructions above to build, please run the commands below instead:
+:whale: **Alternatively**, if you used the **Docker** instructions above to build, please run the commands below instead:
 
 Build and run docker container for `fleet_adapter_r3`:
 ```bash
