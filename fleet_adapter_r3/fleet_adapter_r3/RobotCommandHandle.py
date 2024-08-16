@@ -41,10 +41,6 @@ from .utils.Coordinate import LionsbotCoord
 from .RobotClientAPI import RobotAPI 
 
 from rmf_task_msgs.msg import ApiRequest, ApiResponse
-from rmf_litter_msgs.msg import Litters
-from rmf_litter_msgs.msg import Litter
-from rmf_litter_msgs.msg import Location
-
 
 # States for RobotCommandHandle's state machine used when guiding robot along
 # a new path
@@ -152,25 +148,7 @@ class RobotCommandHandle(adpt.RobotCommandHandle):
         self.robot_state_subscription = self.node.create_subscription(
             ApiRequest, Topic.LB_TASKS_REQUEST.value, self.lb_task_api_requests_payload_handler, 10)
         
-        # Subscribe to litter topic 
-        self.robot_litter_subscription = self.node.create_subscription(
-            Litters, Topic.RMF_LITTER.value, self.rmf_litter_payload_handler, 10)
-
         self.initialized = True
-
-    def rmf_litter_payload_handler(self, msg: Litters):
-        def is_nearby_litter(litter_locations):
-            DISTANCE_THRESHOLD_METERS = 0.5
-            return any(map(
-                lambda location: location.level_name == self.map_name 
-                    and math.dist((self.position.x, self.position.y), (location.x, location.y)) < DISTANCE_THRESHOLD_METERS, 
-                litter_locations))
-
-        self.node.get_logger().info(f'Received litter message: {msg}')
-        litter_locations =  list(map(lambda litter: litter.location, msg.litters))
-
-        if self.api.robot_cleaning(robot_name=self.name) and is_nearby_litter(litter_locations):
-            self.state = RobotState.PAUSED
 
     def lb_task_api_requests_payload_handler(self, msg: ApiRequest):
         payload = json.loads(msg.json_msg)

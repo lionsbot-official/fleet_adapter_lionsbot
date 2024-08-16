@@ -34,7 +34,6 @@ class ActiveMissionType(Enum):
    MOVING = "MOVING"
 
 class Topic(Enum):
-    RMF_LITTER = "rmf_litter"
     LB_TASKS_REQUEST = "lb_task_api_requests"
     DOCK_SUMMARY = "dock_summary"
 
