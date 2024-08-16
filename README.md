@@ -16,7 +16,7 @@ Currently, fleet adapters are developed and has been tested for these supported 
 
 | RMF Version | Installation Instructions     | Supported distros | Supported ROS2 versions |
 |-------|-------------------------------|-------------------|-----------------------|
-| 21.09 | [Installation Instructions](https://github.com/open-rmf/rmf/tree/release/21.09) | Ubuntu 20.04, Ubuntu 21.09, RHEL 8 (deployment only) | Foxy, Galactic |
+| 22.09 | [Installation Instructions](https://github.com/open-rmf/rmf/tree/release/22.09) | Ubuntu 22.04 | Humble |
 
 ## Tasks Summary
 
