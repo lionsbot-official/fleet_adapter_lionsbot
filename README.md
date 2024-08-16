@@ -30,6 +30,36 @@ Currently, fleet adapters are developed and has been tested for these supported 
 
 > **NOTE**: `pause_task` and `continue_task` are custom tasks. The python scripts have to be added into where the rest of the official tasks are located.
 
+## Building the fleet adapter
+
+```bash
+cd $HOME && mkdir -p fleet_adapter_lionsbot_ws/src
+```
+
+```bash
+cd fleet_adapter_lionsbot_ws/
+```
+
+```bash
+git clone https://github.com/lionsbot-official/fleet_adapter_lionsbot --branch rmf/22.09 --single-branch --depth 1 src
+```
+
+```bash
+source /opt/ros/humble/setup.bash
+```
+
+```bash
+rosdep update --rosdistro $ROS_DISTRO
+```
+
+```bash
+rosdep install --from-paths src --ignore-src --rosdistro $ROS_DISTRO -yr
+```
+
+```bash
+colcon build --cmake-args -DCMAKE_BUILD_TYPE=Release 
+```
+
 ## Running the fleet adapter
 
 ```
