@@ -96,9 +96,9 @@ docker run -it --rm  \
 --name fleet_adapter_lionsbot_r3_c \
 fleet_adapter_lionsbot:r3 bash -c \
 "ros2 run fleet_adapter_r3 fleet_adapter \
--c config.yaml \
--n nav_graph.yaml \
--d dock_summary.yaml"
+-c /fleet_adapter_r3_ws/src/fleet_adapter_r3/configs/config.yaml \
+-n /fleet_adapter_r3_ws/src/fleet_adapter_r3/configs/nav_graph.yaml \
+-d /fleet_adapter_r3_ws/src/fleet_adapter_r3/configs/dock_summary.yaml"
 ```
 
 Build and run docker container for `fleet_adapter_leoscrub`:
@@ -109,7 +109,7 @@ docker run -it --rm  \
 --name fleet_adapter_lionsbot_leoscrub_c \
 fleet_adapter_lionsbot:leoscrub bash -c \
 "ros2 run fleet_adapter_leoscrub fleet_adapter \
--c config.yaml \
--n nav_graph.yaml \
--d dock_summary.yaml"
+-c /fleet_adapter_leoscrub_ws/src/fleet_adapter_leoscrub/configs/config.yaml \
+-n /fleet_adapter_leoscrub_ws/src/fleet_adapter_leoscrub/configs/nav_graph.yaml \
+-d /fleet_adapter_leoscrub_ws/src/fleet_adapter_leoscrub/configs/dock_summary.yaml"
 ```
