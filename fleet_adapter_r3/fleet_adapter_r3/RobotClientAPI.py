@@ -73,6 +73,9 @@ class RobotAPI:
 
         self._lock = threading.Lock()
 
+        self.target_position = None
+        self.waypoint_buffer_threshold = 15.0
+
         # Test connectivity
         connected = self.check_connection()
         self.connected = connected
@@ -531,34 +534,21 @@ class RobotAPI:
 
     def navigation_completed(self, robot_name: str) -> NavigationStatus:
         self.refresh_expired_token()
-        
-        with self._lock:
-            mission_status = self.get_mission_status(robot_name=robot_name)
-            robot_status = self.get_robot_status(robot_name=robot_name)
 
-        if mission_status is None or robot_status is None:
-            return NavigationStatus.EMPTY
-        
-        robot_mission_status = mission_status['missionStatus']['mission']['status']
+        threshold = self.waypoint_buffer_threshold
 
-        if robot_mission_status == RobotMissionStatus.MOVING_FINISHED.value:
-            # 5 seconds to wait for any error code
-            # This is necessary as mission status and response codes are from two separate message payloads
-            retries = 5
-            while retries > 0:
-                # within this time window, if any error code comes in, navigation was not completed
-                if ResponseCode.P2P_STARTED not in mission_status['alertIds']:
-                    return NavigationStatus.NAVIGATION_ERROR
-                
-                time.sleep(1)
-                retries -= 1
+        curr_robot_position = self.position(robot_name)
 
-            # P2P_STARTED indicates moving started and finished successfully without any errors in between
-            return NavigationStatus.NAVIGATION_SUCCESS
-                
+        if self.target_position is None:
+            print("target_waypoint not set yet. Ignoring...")
+            return False
         else:
-            return NavigationStatus.NAVIGATING if robot_status['status'] == RobotStatus.MOVING.value \
-            else NavigationStatus.NAVIGATION_ERROR
+            # Check if robot is near target waypoint within buffer threshold
+            if (abs(curr_robot_position.x - self.target_position.x) <= threshold and
+                abs(curr_robot_position.y - self.target_position.y) <= threshold):
+                return True
+            else:
+                return False
 
     def start_process(self, robot_name: str, process: str, map_name: str):
         ''' Request the robot to begin a process. This is specific to the robot

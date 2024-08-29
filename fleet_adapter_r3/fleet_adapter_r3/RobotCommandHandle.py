@@ -279,6 +279,8 @@ class RobotCommandHandle(adpt.RobotCommandHandle):
                         rmf_coord=target_pose_rmf
                     )
 
+                    self.api.target_position = target_pose_robot
+
                     robot_status = self.api.get_robot_status(robot_name=self.name)
                     while robot_status is None:
                         robot_status = self.api.get_robot_status(robot_name=self.name)
