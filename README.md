@@ -63,17 +63,21 @@ colcon build --cmake-args -DCMAKE_BUILD_TYPE=Release
 :whale: **Alternatively**, if you like to use **Docker** and avoid the hassle of resolving dependency conflicts, please run the commands below instead:
 
 ```bash
-cd $HOME && git clone https://github.com/lionsbot-official/fleet_adapter_lionsbot --branch rmf/22.09 --single-branch --depth 1
+cd $HOME 
+```
+
+```bash
+git clone https://github.com/lionsbot-official/fleet_adapter_lionsbot --branch rmf/22.09 --single-branch --depth 1 && cd fleet_adapter_lionsbot
 ```
 
 Build docker image for `fleet_adapter_r3`:
 ```bash
-cd fleet_adapter_lionsbot && docker build -f r3_Dockerfile -t fleet_adapter_lionsbot:r3
+docker build -f r3_Dockerfile -t fleet_adapter_lionsbot:r3 .
 ```
 
 Build docker image for `fleet_adapter_leoscrub`:
 ```bash
-cd fleet_adapter_lionsbot && docker build -f leoscrub_Dockerfile -t fleet_adapter_lionsbot:leoscrub
+docker build -f leoscrub_Dockerfile -t fleet_adapter_lionsbot:leoscrub .
 ```
 
 ## Running the fleet adapter
