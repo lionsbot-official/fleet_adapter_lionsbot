@@ -78,7 +78,9 @@ class RobotCommandHandle(adpt.RobotCommandHandle):
                  charger_waypoint,
                  update_frequency,
                  adapter,
-                 api:RobotAPI):
+                 api:RobotAPI,
+                 safe_nav_flag,
+                 waypoints_info):
         adpt.RobotCommandHandle.__init__(self)
         self.name = name
         self.fleet_name = fleet_name
@@ -110,6 +112,9 @@ class RobotCommandHandle(adpt.RobotCommandHandle):
         self.next_arrival_estimator = None
         self.path_index = 0
         self.docking_finished_callback = None
+
+        self.use_safe_nav = safe_nav_flag
+        self.waypoint_network = waypoints_info
 
         # RMF location trackers
         self.last_known_lane_index = None
@@ -220,6 +225,23 @@ class RobotCommandHandle(adpt.RobotCommandHandle):
         self._quit_dock_event.clear()
 
         self.node.get_logger().info("Received new path to follow...")
+
+        if self.use_safe_nav:
+            name_waypoints = []
+            # Discard first waypoint due to non-match with existing waypoints.
+            waypoints = waypoints[1:]
+
+            for x in range(len(waypoints)):
+                is_waypoint = False
+                for waypoint_name in self.waypoint_network:
+                    if (waypoints[x].position[0] == self.waypoint_network[waypoint_name][0] and
+                        waypoints[x].position[1] == self.waypoint_network[waypoint_name][1]):
+                        is_waypoint = True
+                        self.node.get_logger().info(f'{x}. waypoint received = {waypoint_name}')
+                        name_waypoints.append(waypoint_name)
+                if not is_waypoint:
+                    self.node.get_logger().info(f'{x}. waypoint received = {waypoints[x].position}')
+
         self.remaining_waypoints = self.get_remaining_waypoints(waypoints)
         assert next_arrival_estimator is not None
         assert path_finished_callback is not None
@@ -274,10 +296,18 @@ class RobotCommandHandle(adpt.RobotCommandHandle):
 
                     self.node.get_logger().info(f'Attempting to navigate in map: {current_map_name}')
 
-                    target_pose_rmf = self.target_waypoint.position
-                    target_pose_robot: LionsbotCoord = self.transforms[current_map_name].rmf_meters_to_robot(
-                        rmf_coord=target_pose_rmf
-                    )
+                    if self.use_safe_nav:
+                        # Move robot to next waypoint
+                        is_waypoint = False
+                        for waypoint_name in self.waypoint_network:
+                            if (self.target_waypoint.position[0] == self.waypoint_network[waypoint_name][0] and
+                                self.target_waypoint.position[1] == self.waypoint_network[waypoint_name][1]):
+                                target_pose_robot = self.api.get_waypoint_position(self.name, self.map_name, waypoint_name)
+                    else:
+                        target_pose_rmf = self.target_waypoint.position
+                        target_pose_robot: LionsbotCoord = self.transforms[current_map_name].rmf_meters_to_robot(
+                            rmf_coord=target_pose_rmf
+                        )
 
                     robot_status = self.api.get_robot_status(robot_name=self.name)
                     while robot_status is None:
