@@ -438,7 +438,8 @@ def main(argv=sys.argv):
         server_uri = args.server_uri
 
     if args.use_safe_nav:
-        print('USING SAFE : Navigating via Robot Localization Points')
+        print('USING SAFE_NAV : Navigating via Robot Localization Points')
+        print('Please ensure that Robot Map has waypoints same as RMF Map.')
         safe_nav_flag = True
     else:
         safe_nav_flag = False
