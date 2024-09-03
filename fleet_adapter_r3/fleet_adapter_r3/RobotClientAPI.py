@@ -1080,3 +1080,37 @@ class RobotAPI:
             print(f'HTTP error: {http_err}')
 
         return False
+    
+    def get_waypoint_position(self, robot_name: str, map_name: str, waypoint_name: str):
+        self.refresh_expired_token()
+
+        map_data = self.get_map(map_name=map_name, robot_name=robot_name)
+        if map_data is None:
+            return False
+
+        map_id = map_data['id']
+
+        # Defining API path for getting robot position.
+        path = f'{constants.OPEN_API_PREFIX}/worksitemap/locpoint/{map_id}'
+        headers = {'Authorization': f'Bearer {self.token}'}
+    
+        # Sending API call for getting robot position.
+        try:
+            r = requests.get(f'https://{self.prefix}{path}', headers=headers)
+            r.raise_for_status()
+            data = r.json()
+    
+            for local_element in data:
+                if local_element['name'] == waypoint_name:
+                    parts = local_element['coordinates'].split()
+    
+                    x = int(parts[0])  
+                    y = int(parts[1]) 
+    
+                    waypoint_position = LionsbotCoord(x, y, local_element['angle'])
+                    return waypoint_position
+
+        except requests.exceptions.ConnectionError as connection_error:
+            print(f'Connection error: {connection_error}')
+        except HTTPError as http_err:
+            print(f'HTTP error: {http_err}')

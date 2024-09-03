@@ -57,7 +57,7 @@ from .utils.Coordinate import LionsbotCoord
 # ------------------------------------------------------------------------------
 
 
-def initialize_fleet(config_yaml, nav_graph_path, node, use_sim_time, server_uri, dock_summary_yaml):
+def initialize_fleet(config_yaml, nav_graph_path, node, use_sim_time, server_uri, dock_summary_yaml, safe_nav_flag):
     # Dock summary
     def make_location(p, level_name):
         location = Location()
@@ -269,6 +269,14 @@ def initialize_fleet(config_yaml, nav_graph_path, node, use_sim_time, server_uri
                     node.get_logger().info(f"Subscribing to robot: {robot_name}")
                     api.subscribe_to_robot(robot_name, time.time_ns() / 1000000)
 
+                    if safe_nav_flag:
+                        waypoints_info = {}
+                        with open(nav_graph_path, 'r') as file:
+                            data = yaml.safe_load(file)
+                            data = data['levels'][rmf_config['start']['map_name']]['vertices']
+                            for waypoint in data:
+                                waypoints_info[waypoint[2]['name']] = [waypoint[0], waypoint[1]]
+
                     api.robot_current_building[robot_name] = rmf_config['start']['building_name']
                     api.robot_current_map[robot_name] = rmf_config['start']['map_name']
 
@@ -313,7 +321,9 @@ def initialize_fleet(config_yaml, nav_graph_path, node, use_sim_time, server_uri
                         update_frequency=rmf_config.get(
                             'robot_state_update_frequency', 1),
                         adapter=adapter,
-                        api=api)
+                        api=api,
+                        use_safe_nav=safe_nav_flag,
+                        waypoints_info=waypoints_info)
 
                     if robot.initialized:
                         robots[robot_name] = robot
@@ -396,6 +406,8 @@ def main(argv=sys.argv):
                         help='Use sim time, default: false')
     parser.add_argument("-d", "--dock_summary_file", type=str, required=True,
                         help="Path to the dock_summary.yaml file")
+    parser.add_argument("--use_safe_nav", action="store_true", required=False, default=False,
+                        help="Boolean flag for navigating via robot location points")
     args = parser.parse_args(args_without_ros[1:])
     print(f"Starting fleet adapter...")
 
@@ -425,13 +437,22 @@ def main(argv=sys.argv):
     else:
         server_uri = args.server_uri
 
+    if args.use_safe_nav:
+        print('USING SAFE : Navigating via Robot Localization Points')
+        safe_nav_flag = True
+    else:
+        safe_nav_flag = False
+    
+    print(f"[safe_nav_flag] set to {safe_nav_flag}")
+
     adapter = initialize_fleet(
         config_yaml,
         nav_graph_path,
         node,
         args.use_sim_time,
         server_uri,
-        dock_summary_yaml)
+        dock_summary_yaml,
+        safe_nav_flag)
 
     # Create executor for the command handle node
     rclpy_executor = rclpy.executors.SingleThreadedExecutor()
