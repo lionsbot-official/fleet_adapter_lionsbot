@@ -269,8 +269,8 @@ def initialize_fleet(config_yaml, nav_graph_path, node, use_sim_time, server_uri
                     node.get_logger().info(f"Subscribing to robot: {robot_name}")
                     api.subscribe_to_robot(robot_name, time.time_ns() / 1000000)
 
+                    waypoints_info = {}
                     if safe_nav_flag:
-                        waypoints_info = {}
                         with open(nav_graph_path, 'r') as file:
                             data = yaml.safe_load(file)
                             data = data['levels'][rmf_config['start']['map_name']]['vertices']
