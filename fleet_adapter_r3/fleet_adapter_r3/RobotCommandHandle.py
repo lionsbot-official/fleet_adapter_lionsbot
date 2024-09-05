@@ -300,8 +300,8 @@ class RobotCommandHandle(adpt.RobotCommandHandle):
                         # Move robot to next waypoint
                         is_waypoint = False
                         for waypoint_name in self.waypoint_network:
-                            if (self.target_waypoint.position[0] == self.waypoint_network[waypoint_name][0] and
-                                self.target_waypoint.position[1] == self.waypoint_network[waypoint_name][1]):
+                            if (self.target_waypoint.position.x == self.waypoint_network[waypoint_name][0] and
+                                self.target_waypoint.position.y == self.waypoint_network[waypoint_name][1]):
                                 target_pose_robot = self.api.get_waypoint_position(self.name, self.map_name, waypoint_name)
                     else:
                         target_pose_rmf = self.target_waypoint.position
