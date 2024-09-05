@@ -297,7 +297,8 @@ class RobotCommandHandle(adpt.RobotCommandHandle):
                     self.node.get_logger().info(f'Attempting to navigate in map: {current_map_name}')
 
                     if self.use_safe_nav:
-                        # Move robot to next waypoint
+                        # Search through all waypoints to get matching waypoint.
+                        # Once found, make API call to get LionsbotCoord of matching waypoint.
                         for waypoint_name in self.waypoint_network:
                             if (self.target_waypoint.position.x == self.waypoint_network[waypoint_name][0] and
                                 self.target_waypoint.position.y == self.waypoint_network[waypoint_name][1]):
