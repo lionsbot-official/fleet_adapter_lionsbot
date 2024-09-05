@@ -79,7 +79,7 @@ class RobotCommandHandle(adpt.RobotCommandHandle):
                  update_frequency,
                  adapter,
                  api:RobotAPI,
-                 safe_nav_flag,
+                 use_safe_nav,
                  waypoints_info):
         adpt.RobotCommandHandle.__init__(self)
         self.name = name
@@ -113,7 +113,7 @@ class RobotCommandHandle(adpt.RobotCommandHandle):
         self.path_index = 0
         self.docking_finished_callback = None
 
-        self.use_safe_nav = safe_nav_flag
+        self.use_safe_nav = use_safe_nav
         self.waypoint_network = waypoints_info
 
         # RMF location trackers
