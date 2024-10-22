@@ -303,6 +303,9 @@ class RobotCommandHandle(adpt.RobotCommandHandle):
                             if (self.target_waypoint.position.x == self.waypoint_network[waypoint_name][0] and
                                 self.target_waypoint.position.y == self.waypoint_network[waypoint_name][1]):
                                 target_pose_robot = self.api.get_waypoint_position(self.name, self.map_name, waypoint_name)
+                                if not target_pose_robot:
+                                    self.node.get_logger().error(f'Failed to get waypoint position for {waypoint_name} in Lionsbot map')
+                                    return
                     else:
                         target_pose_rmf = self.target_waypoint.position
                         target_pose_robot: LionsbotCoord = self.transforms[current_map_name].rmf_meters_to_robot(
