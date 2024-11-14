@@ -507,10 +507,16 @@ class RobotAPI:
             # as there are times mission status feedback rounds of position to whole number
             is_correct_mission = int(x) == int(pose.x) and int(y) == int(pose.y) 
 
+            curr_x = self.robot_pose.get(robot_name).x
+            curr_y = self.robot_pose.get(robot_name).y
+            is_robot_within_target_coord = abs(x - curr_x) <= 10 and abs(y - curr_y) <= 10
+
             # When coordinate is too near, possible to receive MOVING -> MOVING_FINISHED in quick succession. In this case, 
             # we take navigation to be successful 
+            # if robot encountered error but robot is already near target position, treat as success as robot will not send
+            # P2P_STARTED anymore when position is too close to target
             if (mission_status == RobotMissionStatus.MOVING.value or mission_status == RobotMissionStatus.MOVING_FINISHED.value) \
-                and is_correct_mission and ResponseCode.P2P_STARTED in robot_mission_status['alertIds']:
+                and is_correct_mission and (ResponseCode.P2P_STARTED in robot_mission_status['alertIds'] or is_robot_within_target_coord):
                 self.robot_current_map[robot_name] = map_name
                 return True
             
