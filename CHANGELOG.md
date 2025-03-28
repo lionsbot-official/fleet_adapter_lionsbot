@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v1.1.1 (2025-03-28)
+
+### Bug Fixes
+
+- Remove jwt token decode to obtain jwt expiry time
+  ([`d680841`](https://github.com/lionsbot-official/fleet_adapter_lionsbot/commit/d680841acc29d184c9cde09d42fb89eaf0cf457d))
+
+
 ## v1.1.0 (2025-03-28)
 
 ### Features
