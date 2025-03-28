@@ -40,10 +40,11 @@ from .models.NavigateContent import NavigateContent
 from .models.CleanProcessContent import CleanProcessContent
 from .models.DockProcessContent import DockProcessContent
 import time
+from datetime import datetime
+from datetime import timezone
 
 from .models.StopProcessContent import StopProcessContent
 from .models.Zone import Zone
-import jwt
 
 from .utils.MapTransform import MapTransform
 from .utils.Coordinate import RmfCoord
@@ -61,7 +62,7 @@ class RobotAPI:
         self.password = password
         self.connected = False
         self.token = None
-        self.token_details = None
+        self.token_expiry = None
         self.robot_status_ws_connection = None
         self.robot_pose_ws_connection = None
         self.robot = None
@@ -112,11 +113,10 @@ class RobotAPI:
             r.raise_for_status()
             data = r.json()
             token = data['token']
+            token_expiry = datetime.strptime(data['tokenExpiryIsoUtcTime'], "%Y-%m-%dT%H:%M:%S.%fZ").replace(tzinfo=timezone.utc)
 
             self.token = token
-
-            decoded = jwt.decode(self.token, options={"verify_signature": False})
-            self.token_details = decoded
+            self.token_expiry = token_expiry.timestamp()
         except requests.exceptions.ConnectionError as connection_error:
             print(f'Connection error: {connection_error}')
         except HTTPError as http_err:
@@ -125,7 +125,7 @@ class RobotAPI:
         return None
     
     def refresh_expired_token(self):
-        if self.token_details is None or self.token_details['exp'] <= time.time():
+        if self.token_expiry is None or self.token_expiry <= time.time():
             self.request_token()
 
     def connect_to_robot_status_ws(self):
