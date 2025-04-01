@@ -204,7 +204,7 @@ class RobotAPI:
                                                                  on_close=on_close,
                                                                  on_error=on_error,
                                                                  on_message=on_message)
-        self.robot_status_ws_connection.run_forever()
+        self.robot_status_ws_connection.run_forever(origin=f'https://{self.prefix}')
 
     def connect_to_robot_position_ws(self):
         self.refresh_expired_token()
@@ -236,7 +236,7 @@ class RobotAPI:
                                                                on_close=on_close,
                                                                on_error=on_error,
                                                                on_message=on_message)
-        self.robot_pose_ws_connection.run_forever()
+        self.robot_pose_ws_connection.run_forever(origin=f'https://{self.prefix}')
 
     def subscribe_to_robot(self, robot_encoding_id: str, time_stamp: float):
         payload = {'operation_cmd': 'subscribe', 'robot_encoding_id': robot_encoding_id, 'time_stamp': time_stamp}
