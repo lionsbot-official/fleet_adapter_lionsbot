@@ -36,6 +36,7 @@ from .enums.enums import NavigationStatus
 from .enums.enums import RobotStatus
 from .enums.enums import ResponseCode
 from .enums.enums import RobotMissionStatus
+from .enums.enums import OperationEndStatus
 
 from .models.NavigateContent import NavigateContent
 from .models.CleanProcessContent import CleanProcessContent
@@ -71,6 +72,9 @@ class RobotAPI:
         self.robot_pose: Dict[str, LionsbotCoord] = {}
         self.robot_mission = {}
         self.robot_operation = {}
+        self.robot_operation_end_status = {}
+
+        self.xy_goal_tolerance = 5
 
         self._lock = threading.Lock()
 
@@ -178,6 +182,8 @@ class RobotAPI:
                         'alertIds': self.robot_status[json_message['robot_id']]['alertIds'],
                         'progress': self.robot_status[json_message['robot_id']]['progress']
                     }
+                elif json_message['operation_fb'] == OperationEndStatus.P2P_END_STATUS:
+                    self.robot_operation_end_status = json_message
                 else:
                     robot_operation = self.robot_operation.get(json_message['robot_id'], None)
                     if robot_operation is not None and \
@@ -546,25 +552,42 @@ class RobotAPI:
             return NavigationStatus.EMPTY
         
         robot_mission_status = mission_status['missionStatus']['mission']['status']
+        robot_mission_details = mission_status['missionStatus']['mission']
+        goal_x = robot_mission_details.get('x', 0)
+        goal_y = robot_mission_details.get('y', 0)
+        curr_x = self.robot_pose.get(robot_name).x
+        curr_y = self.robot_pose.get(robot_name).y
+
+        navigation_status = NavigationStatus.NAVIGATION_SUCCESS
 
         if robot_mission_status == RobotMissionStatus.MOVING_FINISHED.value:
-            # 5 seconds to wait for any error code
-            # This is necessary as mission status and response codes are from two separate message payloads
+            # Wait for p2p_end_status to be received from the robot
             retries = 5
             while retries > 0:
-                # within this time window, if any error code comes in, navigation was not completed
-                if ResponseCode.P2P_STARTED not in mission_status['alertIds']:
-                    return NavigationStatus.NAVIGATION_ERROR
+                if self.robot_operation_end_status:
+                    break
                 
                 time.sleep(1)
                 retries -= 1
 
-            # P2P_STARTED indicates moving started and finished successfully without any errors in between
-            return NavigationStatus.NAVIGATION_SUCCESS
-                
+            # If p2p_end_status was not received by the robot, check the proximity of the robot to the goal position
+            if not self.robot_operation_end_status:
+                # If robot is outside of goal tolerance, assume robot failed the navigation
+                if (abs(goal_x-curr_x) > self.xy_goal_tolerance) or (abs(goal_y-curr_y) > self.xy_goal_tolerance):
+                    navigation_status = NavigationStatus.NAVIGATION_ERROR
+            else:
+                # If p2p end status was false, robot failed the navigation
+                if not self.robot_operation_end_status.get('content', {}).get('status'):
+                    navigation_status = NavigationStatus.NAVIGATION_ERROR
         else:
-            return NavigationStatus.NAVIGATING if robot_status['status'] == RobotStatus.MOVING.value \
+            navigation_status = NavigationStatus.NAVIGATING if robot_status['status'] == RobotStatus.MOVING.value \
             else NavigationStatus.NAVIGATION_ERROR
+
+        # Clearing of operation end status only if navigation has ended
+        if navigation_status in [NavigationStatus.NAVIGATION_ERROR, NavigationStatus.NAVIGATION_SUCCESS]:
+            self.robot_operation_end_status = {}
+        
+        return navigation_status
 
     def start_process(self, robot_name: str, process: str, map_name: str):
         ''' Request the robot to begin a process. This is specific to the robot
