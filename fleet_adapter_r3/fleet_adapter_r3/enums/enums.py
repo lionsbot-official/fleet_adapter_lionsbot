@@ -51,3 +51,8 @@ class NavigationStatus:
    NAVIGATION_ERROR = 'NAVIGATION_ERROR'
    NAVIGATING = 'NAVIGATING'
    EMPTY = 'EMPTY'
+
+class OperationEndStatus:
+   P2P_END_STATUS = 'p2p_end_status'
+   CLEAN_END_STATUS = 'clean_end_status'
+   DOCK_END_STATUS = 'dock_end_status'
