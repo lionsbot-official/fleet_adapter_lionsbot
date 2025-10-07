@@ -27,6 +27,7 @@ from urllib.error import HTTPError
 import numpy as np
 import math
 from typing import Dict
+import uuid
 
 from .utils.Coordinate import LionsbotCoord
 from .utils import constants
@@ -73,6 +74,10 @@ class RobotAPI:
         self.robot_mission = {}
         self.robot_operation = {}
         self.robot_operation_end_status = {}
+
+        # Tracking of robot state changes
+        self.robot_current_state_id = {}
+        self.robot_navigate_state_id = {}
 
         self.xy_goal_tolerance = 5
 
@@ -157,6 +162,11 @@ class RobotAPI:
             with self._lock:
                 if json_message['operation_fb'] == 'touchscreen_robot_status':
                     robot_status = json_message['content']
+
+                    # Update the robot current state id if robot has changed state
+                    if self.robot_status[json_message['robot_id']]['state'] != robot_status['state']:
+                        self.robot_current_state_id[json_message['robot_id']] = uuid.uuid4()
+
                     self.robot_status[json_message['robot_id']] = {
                         'eta': robot_status['timeToComplete'],
                         'alertIds': robot_status['alertIds'],
@@ -358,6 +368,9 @@ class RobotAPI:
                 r.raise_for_status()
                 data = r.json()
 
+                # Initialize current state id
+                self.robot_current_state_id[robot_name] = uuid.uuid4()
+
                 self.robot_status[robot_name] = data
 
                 return data
@@ -539,6 +552,10 @@ class RobotAPI:
         navigate_message = json.dumps(payload)
         self.robot_status_ws_connection.send(navigate_message)
 
+        # Save robot current state when command was sent
+        # This is used to track if the robot has changed state or it has completed the command
+        self.robot_navigate_state_id[robot_encoding_id] = self.robot_current_state_id.get(robot_encoding_id, uuid.uuid4())
+
         return True
 
     def navigation_completed(self, robot_name: str) -> NavigationStatus:
@@ -561,6 +578,20 @@ class RobotAPI:
         navigation_status = NavigationStatus.NAVIGATION_SUCCESS
 
         if robot_mission_status == RobotMissionStatus.MOVING_FINISHED.value:
+            # Wait for state to change
+            if self.robot_current_state_id.get(robot_name) == self.robot_navigate_state_id.get(robot_name):
+                retries = 5
+                # Return error if the robot fails to change state after 5[s]
+                while self.robot_current_state_id.get(robot_name) == self.robot_navigate_state_id.get(robot_name):
+                    if retries <= 0:
+                        return NavigationStatus.NAVIGATION_ERROR
+                    
+                    time.sleep(1)
+                    retries -= 1
+
+                # If robot state has changed, indicates robot is navigating to the goal
+                navigation_status = NavigationStatus.NAVIGATING
+            
             # Wait for p2p_end_status to be received from the robot
             retries = 5
             while retries > 0:
@@ -570,11 +601,9 @@ class RobotAPI:
                 time.sleep(1)
                 retries -= 1
 
-            # If p2p_end_status was not received by the robot, check the proximity of the robot to the goal position
-            if not self.robot_operation_end_status:
-                # If robot is outside of goal tolerance, assume robot failed the navigation
-                if (abs(goal_x-curr_x) > self.xy_goal_tolerance) or (abs(goal_y-curr_y) > self.xy_goal_tolerance):
-                    navigation_status = NavigationStatus.NAVIGATION_ERROR
+            # If robot is outside of goal tolerance, assume robot failed the navigation
+            if (abs(goal_x-curr_x) > self.xy_goal_tolerance) or (abs(goal_y-curr_y) > self.xy_goal_tolerance):
+                navigation_status = NavigationStatus.NAVIGATION_ERROR
             else:
                 # If p2p end status was false, robot failed the navigation
                 if not self.robot_operation_end_status.get('content', {}).get('status'):
@@ -582,10 +611,6 @@ class RobotAPI:
         else:
             navigation_status = NavigationStatus.NAVIGATING if robot_status['status'] == RobotStatus.MOVING.value \
             else NavigationStatus.NAVIGATION_ERROR
-
-        # Clearing of operation end status only if navigation has ended
-        if navigation_status in [NavigationStatus.NAVIGATION_ERROR, NavigationStatus.NAVIGATION_SUCCESS]:
-            self.robot_operation_end_status = {}
         
         return navigation_status
 
