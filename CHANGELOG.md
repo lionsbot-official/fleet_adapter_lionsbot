@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## Unreleased
+
+### Bug Fixes
+
+- Detect silent robot telemetry WebSocket failures and reconnect both sockets
+  so robot status and pose subscriptions are restored automatically.
+
 
 ## v1.1.1 (2025-03-28)
 

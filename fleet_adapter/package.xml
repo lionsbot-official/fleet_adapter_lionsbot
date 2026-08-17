@@ -1,0 +1,30 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>fleet_adapter</name>
+  <version>2.0.0</version>
+  <description>Fleet adapters for interfacing with RMF Demos robots with a fleet manager via REST API</description>
+  <maintainer email="celes.chai@gmail.com">Celes Chai</maintainer>
+  <license>Apache License 2.0</license>
+
+  <exec_depend>rmf_fleet_adapter_python</exec_depend>
+  <exec_depend>rmf_charger_msgs</exec_depend>
+  <exec_depend>rmf_visualization_building_systems</exec_depend>
+  <exec_depend>rmf_visualization_fleet_states</exec_depend>
+  <exec_depend>rmf_visualization_navgraphs</exec_depend>
+  <exec_depend>rmf_visualization_floorplans</exec_depend>
+  <exec_depend>rviz2</exec_depend>
+  <exec_depend>rmf_building_map_msgs</exec_depend>
+  <exec_depend>visualization_msgs</exec_depend>
+  <exec_depend>python3-yaml</exec_depend>
+  <!-- The launch scripts select Cyclone DDS explicitly. -->
+  <exec_depend>rmw_cyclonedds_cpp</exec_depend>
+
+  <depend>rclpy</depend>
+  <depend>rmf_fleet_msgs</depend>
+  <depend>rmf_task_msgs</depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>

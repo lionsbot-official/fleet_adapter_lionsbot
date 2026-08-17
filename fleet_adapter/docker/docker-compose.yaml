@@ -1,0 +1,25 @@
+services:
+  fleet-adapter:
+    network_mode: host
+    ipc: host
+    pid: host
+
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    volumes:
+      - ..:/ws/src/fleet_adapter
+    environment:
+      LIONSBOT_USER: ${LIONSBOT_USER:?LIONSBOT_USER is required}
+      LIONSBOT_PASSWORD: ${LIONSBOT_PASSWORD:?LIONSBOT_PASSWORD is required}
+      FOLDER_NAME: ${FOLDER_NAME:-office_new}
+      FLEET_CONFIG: ${FLEET_CONFIG:-config_r5.yaml}
+      NAV_GRAPH: ${NAV_GRAPH:-0.yaml}
+      SERVER_URI: ${SERVER_URI:-ws://127.0.0.1:8000/_internal}
+      RMF_WEB_ALERTS_URL: ${RMF_WEB_ALERTS_URL:-http://127.0.0.1:8000/alerts/request}
+      RMF_WEB_API_TOKEN: ${RMF_WEB_API_TOKEN:?RMF_WEB_API_TOKEN is required for RMF Web alerts}
+      ROS_DOMAIN_ID: ${ROS_DOMAIN_ID:-0}
+      RMW_IMPLEMENTATION: ${RMW_IMPLEMENTATION:?RMW_IMPLEMENTATION is required}
+      USE_SIM_TIME: ${USE_SIM_TIME:-false}
+
+    restart: always

@@ -1,0 +1,36 @@
+# output/office/office.building.yaml was generated with:
+# python3 generate_rmf_yaml.py \ 
+# -i test/fixtures/info_files/L3_office.info \ 
+# -c test/fixtures/test_config.yaml  \
+# -b test/fixtures/building_input/office/office.building.yaml \
+# -l L3 \
+# -o test/fixtures/output/office 
+
+# output/fiducial/fiducial.building.yaml was generated with:
+# python3 generate_rmf_yaml.py \ 
+# -i test/fixtures/info_files/L5_fiducial.info \ 
+# -c test/fixtures/test_config.yaml  \
+# -b test/fixtures/building_input/fiducial/fiducial.building.yaml \
+# -l L5 \
+# -o test/fixtures/output/fiducial 
+
+rmf_fleet:
+  name: "r3"
+
+map_transform: # map transformation
+  L3: # office
+    transform_values: 
+      tx_meters: 38.917
+      ty_meters: 33.043
+      rotation_degrees: -82.791
+      scale: 0.0538562
+  L5: # fiducial
+    transform_values: 
+      tx_meters: 44.017
+      ty_meters: 27.210
+      rotation_degrees: 174.829
+      scale: 0.0504638
+    level_transform:
+      scale: 0.0604
+      tx_pixels: 1002.4
+      ty_pixels: 26.2

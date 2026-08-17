@@ -1,0 +1,103 @@
+# Lionsbot fleet configuration template
+#
+# Copy this file to configs/<building_name>/config_<fleet>.yaml, then replace each
+# value marked <...>. Keep the key names and nesting unchanged: fleet_adapter.py
+# reads this structure directly.
+
+# A transform is required for every RMF level on which this fleet operates.
+# Use the values produced by the map-alignment workflow; do not reuse these
+# placeholders for a real site.
+map_transform:
+  <rmf_level>:
+    # Alignment of the RMF floorplan image in Lionsbot-map pixels. Keep these
+    # defaults when the floorplan origins and scale already match.
+    level_transform:
+      scale: 1.0
+      tx_pixels: 0.0
+      ty_pixels: 0.0
+    transform_values:
+      rotation_degrees: 0.0
+      scale: 1.0
+      tx_meters: 0.0
+      ty_meters: 0.0
+
+rmf_fleet:
+  # Must be unique among all fleets connected to the same RMF deployment.
+  name: <fleet_name>
+
+  # Model characteristics normally do not need site-specific changes. Select
+  # limits appropriate to the robot model:
+  # +-------+-------------------+-----------------------+
+  # | Model | linear [m/s,m/s^2]| angular [rad/s,rad/s^2] |
+  # +-------+-------------------+-----------------------+
+  # | R5    | [0.2, 0.03]       | [0.1, 0.1]            |
+  # | R3SCP | [0.15, 0.025]     | [0.15, 0.3]           |
+  # +-------+-------------------+-----------------------+
+  limits:
+    linear: [0.2, 0.03] # [nominal velocity (m/s), acceleration (m/s^2)]
+    angular: [0.1, 0.1] # [nominal velocity (rad/s), acceleration (rad/s^2)]
+  profile:
+    footprint: 0.5 # Robot radius in metres
+    vicinity: 0.6  # Planning/clearance radius in metres
+  mechanical_system:
+    mass: 80.0
+    moment_of_inertia: 20.0
+    friction_coefficient: 0.2
+  battery_system:
+    voltage: 24.0
+    capacity: 40.0
+    charging_current: 26.4
+  ambient_system:
+    power: 20.0
+  tool_system:
+    power: 760.0
+  account_for_battery_drain: true
+  reversible: false
+  recharge_threshold: 0.3
+  recharge_soc: 1.0
+
+  # Fleet-wide RMF behaviour. `clean` enables cleaning jobs for this fleet;
+  # the adapter also always registers its docking action.
+  task_capabilities:
+    clean: true
+    delivery: false
+    loop: false
+    finishing_request: charge
+  publish_fleet_state: true
+
+  # Credentials are read from fleet_adapter/.env. Select the Lionsbot endpoint
+  # used by this deployment (for example, api.lionsbot.io).
+  fleet_manager:
+    prefix: api.lionsbot.io
+    user: $LIONSBOT_USER
+    password: $LIONSBOT_PASSWORD
+
+# Add one entry per physical robot. The mapping key is the Lionsbot robot name.
+robots:
+  <lionsbot_robot_name>:
+    robot_config:
+      # Lionsbot robot's UUID
+      uuid: <robot_uuid>
+      # Navigation safeguards.
+      max_delay: 15.0
+      navigation:
+        max_retries: 5
+        timeout_grace_sec: 60
+        max_timeout_sec: 120
+        xy_goal_tolerance: 20
+
+    rmf_config:
+      # This must name a charger waypoint in the selected RMF navigation graph.
+      charger:
+        waypoint: <charger_waypoint>
+      robot_state_update_frequency: 10
+      start:
+        # Initial Lionsbot-map pose, used if the robot needs localization.
+        localization_starting_point:
+          x: 0.0
+          y: 0.0
+          heading: 0.0
+        # `rmf_level` must have a matching entry in `map_transform` above.
+        rmf_level: <rmf_level>
+        # Lionsbot map name on the robot.
+        robot_map_name: <lionsbot_map_name>

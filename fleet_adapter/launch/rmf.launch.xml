@@ -1,0 +1,67 @@
+<launch>
+  <arg name="map_yaml_file" description="Path to building map yaml"/>
+  <arg name="use_sim_time" default="false" description="Use simulation time"/>
+  <arg name="floor_name" default="L8" description="Level name to display (e.g., L8)"/>
+  <arg name="headless" default="false" description="Do not launch rviz2"/>
+
+  <node pkg="rmf_building_map_tools" exec="building_map_server" name="building_map_server" output="screen" 
+      args="$(var map_yaml_file) --ros-args -r /building_map:=/map" />
+
+  <node pkg="rmf_traffic_ros2" exec="rmf_traffic_schedule" name="rmf_traffic_schedule" output="screen">
+    <param name="use_sim_time" value="$(var use_sim_time)"/>
+  </node>
+
+  <node pkg="rmf_task_ros2" exec="rmf_task_dispatcher" name="rmf_task_dispatcher" output="screen">
+    <param name="use_sim_time" value="$(var use_sim_time)"/>
+  </node>
+
+  <node pkg="rmf_visualization_schedule" exec="schedule_visualizer_node" name="schedule_visualizer" output="screen">
+    <param name="use_sim_time" value="$(var use_sim_time)"/>
+    <param name="initial_map_name" value="$(var floor_name)"/>
+    <param name="rate" value="30.0"/>
+  </node>
+  
+  <!-- Extrudes the selected level's wall graph into RViz 3D cube markers -->
+  <node pkg="fleet_adapter" exec="building_3d_visualizer" name="building_3d_visualizer" output="screen">
+    <param name="map_topic" value="/map"/>
+    <param name="floor_name" value="$(var floor_name)"/>
+  </node>
+
+  <!-- The building map has no TF publisher; provide the selected level frame. -->
+  <node pkg="tf2_ros" exec="static_transform_publisher" name="building_map_tf" output="screen"
+        args="0 0 0 0 0 0 map $(var floor_name)"/>
+
+  <node pkg="fleet_adapter" exec="robot_marker_visualizer" name="robot_marker_visualizer" output="screen"/>
+
+  <!-- Visualizes active building elements (Doors/Lifts) -->
+  <node pkg="rmf_visualization_building_systems" exec="rmf_visualization_building_systems" name="building_systems_visualizer" output="screen"
+        args="-m $(var floor_name)">
+    <param name="use_sim_time" value="$(var use_sim_time)"/>
+  </node>
+
+  <!-- Translates active fleet tracking markers onto RViz -->
+  <node pkg="rmf_visualization_fleet_states" exec="fleetstates_visualizer_node" name="fleet_state_visualizer" output="screen">
+    <param name="use_sim_time" value="$(var use_sim_time)"/>
+  </node>
+
+  <!-- Visualizes target navigation graphs/lanes -->
+  <node pkg="rmf_visualization_navgraphs" exec="navgraph_visualizer_node" name="navgraphs_visualizer" output="screen">
+    <param name="use_sim_time" value="$(var use_sim_time)"/>
+    <param name="initial_map_name" value="$(var floor_name)"/>
+  </node>
+
+  <!-- Publishes the floorplan occupancy grid consumed by the stock RMF RViz config -->
+  <node pkg="rmf_visualization_floorplans" exec="floorplan_visualizer_node" name="floorplan_visualizer" output="screen"
+        args="--ros-args -r /floorplan:=/floor_plan">
+    <param name="use_sim_time" value="$(var use_sim_time)"/>
+    <param name="initial_map_name" value="$(var floor_name)"/>
+  </node>
+
+  <!-- RViz display dashboard -->
+  <node pkg="rviz2" exec="rviz2" name="rviz2" output="screen"
+        args="-d $(find-pkg-share fleet_adapter)/configs/visualization/rmf.rviz"
+        unless="$(var headless)">
+    <param name="use_sim_time" value="$(var use_sim_time)"/>
+  </node>
+
+</launch>

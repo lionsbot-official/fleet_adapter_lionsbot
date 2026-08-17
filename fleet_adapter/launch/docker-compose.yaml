@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  api-server:
+    image: ghcr.io/open-rmf/rmf-web/api-server:latest
+    environment:
+      - ROS_DOMAIN_ID=0
+    network_mode: host
+    command: start
+
+  dashboard:
+    image: ghcr.io/open-rmf/rmf-web/demo-dashboard:latest
+    environment:
+      - RMF_SERVER_URL=http://localhost:8000
+      - TRAJECTORY_SERVER_URL=ws://localhost:8006
+    network_mode: host
+  

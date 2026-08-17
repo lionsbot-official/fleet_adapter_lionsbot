@@ -1,0 +1,309 @@
+---
+# CI for the internal (GitLab) repository.
+#
+# This repo is upstream; the GitHub repo at lionsbot-official/fleet_adapter_lionsbot
+# is a filtered, squashed mirror of it. Everything under private/ is internal and
+# must never reach GitHub -- the `leak-guard` job enforces that on every MR, and
+# `publish-public` applies the filter when releasing.
+#
+# See private/MAINTAINERS.md for the release runbook.
+
+stages:
+  - test
+  - guard
+  - publish
+
+variables:
+  # The single rule that separates internal from public content. If this changes,
+  # update private/MAINTAINERS.md and the leak-guard test to match.
+  PRIVATE_PATH: "private"
+  # Human-readable form, used in log messages.
+  PUBLIC_REMOTE: "https://github.com/lionsbot-official/fleet_adapter_lionsbot.git"
+  # Actual push target. Deploy keys are SSH-only.
+  PUBLIC_REMOTE_SSH: "git@github.com:lionsbot-official/fleet_adapter_lionsbot.git"
+  # Contributors credited as Co-authored-by on each release commit. See the file
+  # itself for why this is needed (publishing squashes internal history).
+  CONTRIBUTORS_FILE: "private/release-contributors.txt"
+
+# ---------------------------------------------------------------------------
+# test
+# ---------------------------------------------------------------------------
+
+# The adapter needs a full ROS 2 Jazzy environment to import, so the unit tests
+# that do not depend on rclpy are run directly and the rest are left to manual
+# verification on a ROS machine. Keep this list in sync as tests gain/lose
+# ROS dependencies.
+unit-tests:
+  stage: test
+  image: python:3.12-slim
+  before_script:
+    - pip install --quiet pytest numpy PyYAML nudged requests
+  script:
+    - cd fleet_adapter
+    - pytest fleet_adapter/test/test_MapTransform.py -v
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_TAG
+
+# ---------------------------------------------------------------------------
+# guard
+# ---------------------------------------------------------------------------
+
+# Fails if the private/public boundary has been broken. This runs without any
+# credentials so it is safe on merge requests from any branch, and it catches
+# mistakes while they are still cheap -- before a release can pick them up.
+leak-guard:
+  stage: guard
+  image: alpine:3.20
+  before_script:
+    - apk add --no-cache git
+  script:
+    - |
+      set -eu
+
+      fail=0
+
+      # 1. private/ must still exist. If it has been renamed or removed, the
+      #    publish filter would silently ship nothing/everything.
+      if ! git cat-file -e "HEAD:${PRIVATE_PATH}" 2>/dev/null; then
+        echo "ERROR: '${PRIVATE_PATH}/' not found at HEAD."
+        echo "       The publish filter targets this path. If the internal"
+        echo "       content moved, update .gitlab-ci.yml and MAINTAINERS.md."
+        fail=1
+      fi
+
+      # 2. Nothing outside private/ may reference the internal map assets by
+      #    path. A public file pointing into private/ would break on GitHub.
+      #    Exclude this CI file and the runbook, which name the path by design.
+      leaked=$(git grep -In -- "${PRIVATE_PATH}/" HEAD \
+        -- ':!.gitlab-ci.yml' ":!${PRIVATE_PATH}/" || true)
+      if [ -n "$leaked" ]; then
+        echo "ERROR: public files reference '${PRIVATE_PATH}/':"
+        echo "$leaked"
+        echo "       These paths will not exist on GitHub. Remove the reference"
+        echo "       or move the file under ${PRIVATE_PATH}/."
+        fail=1
+      fi
+
+      # 3. No obvious credential material anywhere in the publishable set.
+      #    Config files reference secrets as $ENV_VAR, which is correct; a
+      #    literal assignment is not.
+      creds=$(git grep -InE \
+        '(password|passwd|secret|api_key|apikey|token)[[:space:]]*[:=][[:space:]]*["'"'"']?[A-Za-z0-9/+_-]{12,}' \
+        HEAD -- ':!.gitlab-ci.yml' ":!${PRIVATE_PATH}/" ':!CHANGELOG.md' || true)
+      if [ -n "$creds" ]; then
+        echo "ERROR: possible hardcoded credential in publishable files:"
+        echo "$creds"
+        echo "       Use an environment variable reference (\$VAR) instead."
+        fail=1
+      fi
+
+      if [ "$fail" -ne 0 ]; then
+        echo ""
+        echo "leak-guard failed. Nothing was published."
+        exit 1
+      fi
+      echo "leak-guard passed: '${PRIVATE_PATH}/' is intact and unreferenced."
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_TAG
+
+# ---------------------------------------------------------------------------
+# publish
+# ---------------------------------------------------------------------------
+
+# Publishes a filtered, squashed snapshot of the tagged commit to GitHub.
+#
+# Triggered only by a semver tag on the default branch, so releasing is always a
+# deliberate act -- merging to main does not publish.
+#
+# Authenticates with a GitHub deploy key -- an SSH key attached to the public repo
+# itself rather than to a person. Chosen over a personal access token because a
+# fine-grained PAT against an org repo stays in "Pending" until an org owner
+# approves it, and while pending it can read a public repo but not push, which
+# surfaces as a confusing 403. Deploy keys need no approval, have no expiry, are
+# scoped to one repo, and survive people leaving. This job only pushes git refs
+# and makes no GitHub API calls, so a deploy key is sufficient.
+#
+# Requires one CI/CD variable, Protected, of type "File":
+#   GITHUB_DEPLOY_KEY - private half of a read/write deploy key on the public repo
+#
+# Requires runner egress to github.com over SSH (port 22) -- HTTPS egress alone is
+# not enough. If the runner is network-restricted this job fails at the key check;
+# use private/publish-public.sh from a workstation instead (same filter, same
+# result, uses your own credentials over HTTPS).
+publish-public:
+  stage: publish
+  image: alpine:3.20
+  before_script:
+    - apk add --no-cache git openssh-client
+  script:
+    - |
+      set -eu
+
+      : "${GITHUB_DEPLOY_KEY:?Set GITHUB_DEPLOY_KEY as a protected File-type CI variable}"
+
+      # File-type variables expose a path, not the contents. Copy to a private
+      # location with strict permissions -- ssh refuses group/world readable keys.
+      install -m 700 -d ~/.ssh
+      install -m 600 "$GITHUB_DEPLOY_KEY" ~/.ssh/id_deploy
+
+      # A key pasted through a web form often loses its trailing newline, which
+      # makes ssh reject it as malformed. Restore it if missing.
+      if [ -n "$(tail -c1 ~/.ssh/id_deploy)" ]; then
+        echo >> ~/.ssh/id_deploy
+      fi
+
+      # Pin GitHub's host keys rather than disabling host verification, so the
+      # push cannot be silently redirected.
+      ssh-keyscan -t rsa,ecdsa,ed25519 github.com > ~/.ssh/known_hosts 2>/dev/null
+
+      export GIT_SSH_COMMAND="ssh -i ~/.ssh/id_deploy -o IdentitiesOnly=yes"
+
+      # Verify the key up front so a bad or unregistered key fails here with a
+      # clear message, instead of as a 403 at the push step. GitHub always exits
+      # non-zero for `ssh -T`, so match on the message rather than the status.
+      ssh -i ~/.ssh/id_deploy -o IdentitiesOnly=yes -o BatchMode=yes \
+        -T git@github.com > /tmp/ssh.out 2>&1 || true
+      if ! grep -q "successfully authenticated" /tmp/ssh.out; then
+        echo "ERROR: github.com rejected the deploy key."
+        sed 's/^/  /' /tmp/ssh.out
+        echo ""
+        echo "       GITHUB_DEPLOY_KEY must hold the PRIVATE half of a key whose"
+        echo "       public half is registered on the public repo under"
+        echo "       Settings > Deploy keys, with 'Allow write access' ticked."
+        exit 1
+      fi
+      echo "Deploy key authenticated with github.com."
+
+      VERSION="${CI_COMMIT_TAG#v}"
+
+      # The ROS package version and the git tag must agree, or the published
+      # package will claim a version nobody can trace back to a release.
+      PKG_VERSION=$(sed -n 's:.*<version>\(.*\)</version>.*:\1:p' \
+        fleet_adapter/package.xml | head -1)
+      if [ "$PKG_VERSION" != "$VERSION" ]; then
+        echo "ERROR: tag is ${CI_COMMIT_TAG} (version ${VERSION}) but"
+        echo "       fleet_adapter/package.xml says ${PKG_VERSION}."
+        echo "       Bump package.xml and setup.py, then re-tag."
+        exit 1
+      fi
+
+      echo "Publishing ${CI_COMMIT_TAG} to GitHub (stripping ${PRIVATE_PATH}/)"
+
+      # Build the public tree in a scratch directory: copy the tagged worktree,
+      # drop the internal path, and commit it as a single release commit onto
+      # the existing public history. Squashing is deliberate -- internal commit
+      # messages and branch names are not published.
+      # Collect Co-authored-by trailers before filtering, so the squashed commit
+      # still credits everyone whose work it contains. Without this a release
+      # appears to be authored solely by whoever triggered the pipeline.
+      TRAILERS=""
+      if [ -f "$CONTRIBUTORS_FILE" ]; then
+        TRAILERS=$(grep -vE '^[[:space:]]*(#|$)' "$CONTRIBUTORS_FILE" \
+          | sed 's/^/Co-authored-by: /')
+      fi
+
+      PUBDIR=$(mktemp -d)
+      git archive "$CI_COMMIT_TAG" | tar -x -C "$PUBDIR"
+      rm -rf "${PUBDIR:?}/${PRIVATE_PATH}"
+
+      # Belt and braces: never push a tree that still contains the private path.
+      if [ -e "${PUBDIR}/${PRIVATE_PATH}" ]; then
+        echo "ERROR: ${PRIVATE_PATH}/ survived the filter. Aborting."
+        exit 1
+      fi
+
+      cd "$PUBDIR"
+      git init --quiet
+      git config user.name "LionsBot Release Bot"
+      git config user.email "noreply@lionsbot.com"
+
+      # Deploy keys are SSH-only, so push over SSH.
+      git remote add public "$PUBLIC_REMOTE_SSH"
+
+      # Fetch existing public history so the release lands on top of it rather
+      # than replacing it -- no force-push, history stays intact for anyone who
+      # has already cloned.
+      #
+      # Distinguish "repo is empty" from "cannot reach GitHub": treating a
+      # network or auth failure as an empty repo would publish an orphan history
+      # over the existing one. Capture the error and only continue if the remote
+      # genuinely has no main branch.
+      if git fetch --quiet --depth=1 public main 2>/tmp/fetch.err; then
+        git reset --soft FETCH_HEAD
+        echo "Fetched existing public main; release will land on top of it."
+      elif git ls-remote --exit-code --heads public main >/dev/null 2>&1; then
+        echo "ERROR: public main exists but could not be fetched."
+        cat /tmp/fetch.err >&2
+        exit 1
+      elif git ls-remote public >/dev/null 2>&1; then
+        echo "NOTE: public repo reachable but has no main branch;"
+        echo "      publishing initial commit."
+      else
+        echo "ERROR: cannot reach ${PUBLIC_REMOTE}."
+        cat /tmp/fetch.err >&2
+        echo ""
+        echo "       Check the runner has outbound SSH access to github.com"
+        echo "       (port 22). If the runner is network-restricted, publish"
+        echo "       from a workstation instead:"
+        echo "         private/publish-public.sh ${CI_COMMIT_TAG} --push"
+        exit 1
+      fi
+
+      git add -A
+      if git diff --cached --quiet; then
+        echo "No public-facing changes in ${CI_COMMIT_TAG}; tagging only."
+      else
+        # RELEASE_AUTHOR_NAME/EMAIL let a release be attributed to the person
+        # whose work it is rather than to the release bot. Set them as CI
+        # variables, or per-release via "Run pipeline" variables.
+        if [ -n "${RELEASE_AUTHOR_NAME:-}" ] && [ -n "${RELEASE_AUTHOR_EMAIL:-}" ]; then
+          export GIT_AUTHOR_NAME="$RELEASE_AUTHOR_NAME"
+          export GIT_AUTHOR_EMAIL="$RELEASE_AUTHOR_EMAIL"
+          echo "Release authored by: ${RELEASE_AUTHOR_NAME} <${RELEASE_AUTHOR_EMAIL}>"
+        fi
+        printf 'Release %s\n\n%s\n' "$CI_COMMIT_TAG" "$TRAILERS" \
+          | git commit --quiet -F -
+      fi
+
+      git tag "$CI_COMMIT_TAG"
+
+      # DRY_RUN exercises this entire job -- credentials, filter, author
+      # attribution, trailers, and the fetch of existing public history -- and
+      # stops here, before anything reaches GitHub. Use it to validate a release
+      # (and runner egress to github.com) without publishing.
+      if [ "${DRY_RUN:-}" = "true" ]; then
+        echo ""
+        echo "=== DRY RUN: nothing will be pushed ==="
+        echo "Would push to: ${PUBLIC_REMOTE}"
+        echo "  branch: main   commit: $(git rev-parse --short HEAD)"
+        echo "  tag:    ${CI_COMMIT_TAG}"
+        echo ""
+        echo "Release commit that would be published:"
+        git --no-pager log -1 --format='  author:    %an <%ae>%n  committer: %cn <%ce>'
+        echo ""
+        git --no-pager log -1 --format='%B' | sed 's/^/  /'
+        echo "Files: $(git ls-files | wc -l | tr -d ' ')"
+        if git ls-files | grep -q "^${PRIVATE_PATH}/"; then
+          echo "ERROR: ${PRIVATE_PATH}/ present in the tree. Would have leaked."
+          exit 1
+        fi
+        echo "Filter check: no ${PRIVATE_PATH}/ files in the publishable tree."
+        echo ""
+        echo "Dry run complete. Re-run without DRY_RUN to publish."
+        exit 0
+      fi
+
+      git push public HEAD:main
+      git push public "$CI_COMMIT_TAG"
+
+      echo "Published ${CI_COMMIT_TAG} to ${PUBLIC_REMOTE}"
+  rules:
+    # Semver tags only, and only from the default branch.
+    - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/
+  environment:
+    name: github-public
+    url: https://github.com/lionsbot-official/fleet_adapter_lionsbot

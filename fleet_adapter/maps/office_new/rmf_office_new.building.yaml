@@ -1,0 +1,136 @@
+coordinate_system: reference_image
+crowd_sim:
+  agent_groups:
+    - {agents_name: [], agents_number: 0, group_id: 0, profile_selector: external_agent, state_selector: external_static, x: 0, y: 0}
+  agent_profiles:
+    - {ORCA_tau: 1, ORCA_tauObst: 0.40000000000000002, class: 1, max_accel: 0, max_angle_vel: 0, max_neighbors: 10, max_speed: 0, name: external_agent, neighbor_dist: 5, obstacle_set: 1, pref_speed: 0, r: 0.25}
+  enable: 0
+  goal_sets: []
+  model_types: []
+  obstacle_set: {class: 1, file_name: L8_navmesh.nav, type: nav_mesh}
+  states:
+    - {final: 1, goal_set: -1, name: external_static, navmesh_file_name: ""}
+  transitions: []
+  update_time_step: 0.10000000000000001
+graphs:
+  {}
+levels:
+  L8:
+    constraints:
+      - {ids: ["{3304deb2-740c-4d37-a03c-c3d098570103}", "{31f873de-d2b9-4e78-8eed-99ca8d6fe514}"]}
+      - {ids: ["{e7b3f840-2b87-4f8e-8fc3-4d6e002879e9}", "{e685877c-e000-4be4-8a43-a54c5885ea25}"]}
+      - {ids: ["{0ef44dfb-de48-4cbf-a564-64c72416154b}", "{83addcfb-7aa6-49f7-ab08-c99a9b40b894}"]}
+      - {ids: ["{80e36321-8a11-4e06-aede-f339b3a97235}", "{7d240fef-d17e-4fb6-8b83-3d062197c0ce}"]}
+    drawing:
+      filename: rmf_office_new.png
+    elevation: 0
+    features:
+      - {id: "{80e36321-8a11-4e06-aede-f339b3a97235}", name: "", x: 574.50400000000002, y: 702.76599999999996}
+      - {id: "{0ef44dfb-de48-4cbf-a564-64c72416154b}", name: "", x: 512.79499999999996, y: 700.91300000000001}
+      - {id: "{e7b3f840-2b87-4f8e-8fc3-4d6e002879e9}", name: "", x: 440.78300000000002, y: 702.303}
+      - {id: "{31f873de-d2b9-4e78-8eed-99ca8d6fe514}", name: "", x: 445.76100000000002, y: 796.08100000000002}
+    lanes:
+      - [7, 8, {bidirectional: [4, true], demo_mock_floor_name: [1, ""], demo_mock_lift_name: [1, ""], graph_idx: [2, 0], mutex: [1, ""], orientation: [1, ""], speed_limit: [3, 0]}]
+      - [5, 4, {bidirectional: [4, true], demo_mock_floor_name: [1, ""], demo_mock_lift_name: [1, ""], graph_idx: [2, 0], mutex: [1, ""], orientation: [1, ""], speed_limit: [3, 0]}]
+      - [11, 12, {bidirectional: [4, true], demo_mock_floor_name: [1, ""], demo_mock_lift_name: [1, ""], graph_idx: [2, 0], mutex: [1, ""], orientation: [1, ""], speed_limit: [3, 0]}]
+      - [5, 13, {bidirectional: [4, true], demo_mock_floor_name: [1, ""], demo_mock_lift_name: [1, ""], graph_idx: [2, 0], mutex: [1, ""], orientation: [1, ""], speed_limit: [3, 0]}]
+      - [13, 14, {bidirectional: [4, true], demo_mock_floor_name: [1, ""], demo_mock_lift_name: [1, ""], graph_idx: [2, 0], mutex: [1, ""], orientation: [1, ""], speed_limit: [3, 0]}]
+      - [14, 15, {bidirectional: [4, true], demo_mock_floor_name: [1, ""], demo_mock_lift_name: [1, ""], graph_idx: [2, 0], mutex: [1, ""], orientation: [1, ""], speed_limit: [3, 0]}]
+      - [15, 16, {bidirectional: [4, true], demo_mock_floor_name: [1, ""], demo_mock_lift_name: [1, ""], graph_idx: [2, 0], mutex: [1, ""], orientation: [1, ""], speed_limit: [3, 0]}]
+      - [16, 17, {bidirectional: [4, true], demo_mock_floor_name: [1, ""], demo_mock_lift_name: [1, ""], graph_idx: [2, 0], mutex: [1, ""], orientation: [1, ""], speed_limit: [3, 0]}]
+      - [17, 18, {bidirectional: [4, true], demo_mock_floor_name: [1, ""], demo_mock_lift_name: [1, ""], graph_idx: [2, 0], mutex: [1, ""], orientation: [1, ""], speed_limit: [3, 0]}]
+      - [18, 6, {bidirectional: [4, true], demo_mock_floor_name: [1, ""], demo_mock_lift_name: [1, ""], graph_idx: [2, 0], mutex: [1, ""], orientation: [1, ""], speed_limit: [3, 0]}]
+      - [11, 18, {bidirectional: [4, true], demo_mock_floor_name: [1, ""], demo_mock_lift_name: [1, ""], graph_idx: [2, 0], mutex: [1, ""], orientation: [1, ""], speed_limit: [3, 0]}]
+      - [9, 12, {bidirectional: [4, true], demo_mock_floor_name: [1, ""], demo_mock_lift_name: [1, ""], graph_idx: [2, 0], mutex: [1, ""], orientation: [1, ""], speed_limit: [3, 0]}]
+      - [10, 7, {bidirectional: [4, true], demo_mock_floor_name: [1, ""], demo_mock_lift_name: [1, ""], graph_idx: [2, 0], mutex: [1, ""], orientation: [1, ""], speed_limit: [3, 0]}]
+      - [10, 19, {bidirectional: [4, true], demo_mock_floor_name: [1, ""], demo_mock_lift_name: [1, ""], graph_idx: [2, 0], mutex: [1, ""], orientation: [1, ""], speed_limit: [3, 0]}]
+      - [19, 9, {bidirectional: [4, true], demo_mock_floor_name: [1, ""], demo_mock_lift_name: [1, ""], graph_idx: [2, 0], mutex: [1, ""], orientation: [1, ""], speed_limit: [3, 0]}]
+      - [9, 20, {bidirectional: [4, true], demo_mock_floor_name: [1, ""], demo_mock_lift_name: [1, ""], graph_idx: [2, 0], mutex: [1, ""], orientation: [1, ""], speed_limit: [3, 0]}]
+      - [20, 8, {bidirectional: [4, true], demo_mock_floor_name: [1, ""], demo_mock_lift_name: [1, ""], graph_idx: [2, 0], mutex: [1, ""], orientation: [1, ""], speed_limit: [3, 0]}]
+      - [21, 22, {bidirectional: [4, true], demo_mock_floor_name: [1, ""], demo_mock_lift_name: [1, ""], graph_idx: [2, 1], mutex: [1, ""], orientation: [1, ""], speed_limit: [3, 0]}]
+      - [22, 11, {bidirectional: [4, true], demo_mock_floor_name: [1, ""], demo_mock_lift_name: [1, ""], graph_idx: [2, 1], mutex: [1, ""], orientation: [1, ""], speed_limit: [3, 0]}]
+      - [11, 18, {bidirectional: [4, true], demo_mock_floor_name: [1, ""], demo_mock_lift_name: [1, ""], graph_idx: [2, 1], mutex: [1, ""], orientation: [1, ""], speed_limit: [3, 0]}]
+      - [18, 17, {bidirectional: [4, true], demo_mock_floor_name: [1, ""], demo_mock_lift_name: [1, ""], graph_idx: [2, 1], mutex: [1, ""], orientation: [1, ""], speed_limit: [3, 0]}]
+      - [17, 16, {bidirectional: [4, true], demo_mock_floor_name: [1, ""], demo_mock_lift_name: [1, ""], graph_idx: [2, 1], mutex: [1, ""], orientation: [1, ""], speed_limit: [3, 0]}]
+      - [16, 24, {bidirectional: [4, true], demo_mock_floor_name: [1, ""], demo_mock_lift_name: [1, ""], graph_idx: [2, 1], mutex: [1, ""], orientation: [1, ""], speed_limit: [3, 0]}]
+      - [24, 23, {bidirectional: [4, true], demo_mock_floor_name: [1, ""], demo_mock_lift_name: [1, ""], graph_idx: [2, 1], mutex: [1, ""], orientation: [1, ""], speed_limit: [3, 0]}]
+      - [11, 12, {bidirectional: [4, true], demo_mock_floor_name: [1, ""], demo_mock_lift_name: [1, ""], graph_idx: [2, 1], mutex: [1, ""], orientation: [1, ""], speed_limit: [3, 0]}]
+      - [12, 9, {bidirectional: [4, true], demo_mock_floor_name: [1, ""], demo_mock_lift_name: [1, ""], graph_idx: [2, 1], mutex: [1, ""], orientation: [1, ""], speed_limit: [3, 0]}]
+      - [9, 19, {bidirectional: [4, true], demo_mock_floor_name: [1, ""], demo_mock_lift_name: [1, ""], graph_idx: [2, 1], mutex: [1, ""], orientation: [1, ""], speed_limit: [3, 0]}]
+    layers:
+      r3scp:
+        color: [1, 0, 0, 0.5]
+        features:
+          - {id: "{83addcfb-7aa6-49f7-ab08-c99a9b40b894}", name: "", x: 401.24700000000001, y: 765.23400000000004}
+          - {id: "{e685877c-e000-4be4-8a43-a54c5885ea25}", name: "", x: 471.67500000000001, y: 761.06200000000001}
+          - {id: "{3304deb2-740c-4d37-a03c-c3d098570103}", name: "", x: 467.74900000000002, y: 670.51099999999997}
+          - {id: "{7d240fef-d17e-4fb6-8b83-3d062197c0ce}", name: "", x: 338.23599999999999, y: 766.40999999999997}
+        filename: r3scp/rmf_office_new.png
+        transform:
+          scale: 0.051471299999999998
+          translation_x: 46.277999999999999
+          translation_y: 75.834000000000003
+          yaw: 3.1232143365662925
+        visible: true
+    measurements:
+      - [0, 1, {distance: [3, 3.7599999999999998]}]
+    vertices:
+      - [501.70100000000002, 700.64400000000001, 0, ""]
+      - [501.91399999999999, 773.75199999999995, 0, ""]
+      - [501.11399999999998, 473.76100000000002, 0, ""]
+      - [520.48800000000006, 473.68700000000001, 0, ""]
+      - [565.399, 694.101, 0, charging_1, {dock_name: [1, charging_1], is_charger: [4, true], robot_dock_name: [1, charging_1]}]
+      - [556, 694, 0, location_001]
+      - [507.90899999999999, 687.49599999999998, 0, cZone_001, {is_cleaning_zone: [4, true], robot_zone_name: [1, cZone_001]}]
+      - [450.82400000000001, 451.35000000000002, 0, cZone_002, {is_cleaning_zone: [4, true], robot_zone_name: [1, cZone_002]}]
+      - [450.82400000000001, 490.45699999999999, 0, ""]
+      - [538.08799999999997, 492.12, 0, ""]
+      - [449.238, 395.33100000000002, 0, ""]
+      - [547.31799999999998, 642.92399999999998, 0, ""]
+      - [544.65800000000002, 600.65599999999995, 0, ""]
+      - [562.80700000000002, 717.43799999999999, 0, ""]
+      - [548.93899999999996, 726.26300000000003, 0, ""]
+      - [549.35900000000004, 780.26499999999999, 0, ""]
+      - [525.82500000000005, 779.63400000000001, 0, ""]
+      - [532.54899999999998, 725.21299999999997, 0, ""]
+      - [528.13699999999994, 688.44100000000003, 0, ""]
+      - [537.63, 395.39499999999998, 0, test]
+      - [491.99299999999999, 491.90699999999998, 0, ""]
+      - [570.40899999999999, 670.62699999999995, 0, refuel_891, {dock_name: [1, refuel_891], is_charger: [4, true], robot_dock_name: [1, refuel_891]}]
+      - [562.63900000000001, 670.20399999999995, 0, location_394]
+      - [552.10900000000004, 816.83799999999997, 0, cZone_356, {is_cleaning_zone: [4, true], robot_zone_name: [1, cZone_356]}]
+      - [528.95799999999997, 815.75099999999998, 0, ""]
+      - [500.26600000000002, 440.71300000000002, 0, ""]
+      - [519.61300000000006, 440.05500000000001, 0, ""]
+      - [574.447, 702.15899999999999, 0, ""]
+      - [599.29100000000005, 683.94899999999996, 0, ""]
+      - [574.02300000000002, 683.80799999999999, 0, ""]
+      - [599.00900000000001, 702.15899999999999, 0, ""]
+      - [489.50700000000001, 757.11699999999996, 0, ""]
+      - [490.173, 722.077, 0, ""]
+      - [462.22899999999998, 723.851, 0, ""]
+      - [464.89100000000002, 774.19399999999996, 0, ""]
+      - [514.346, 773.75, 0, ""]
+      - [513.01499999999999, 701.23099999999999, 0, ""]
+      - [441.38299999999998, 702.78300000000002, 0, ""]
+      - [444.709, 796.14999999999998, 0, ""]
+      - [516.78599999999994, 794.375, 0, ""]
+    walls:
+      - [2, 3, {alpha: [3, 1], texture_height: [3, 2.5], texture_name: [1, default], texture_scale: [3, 1], texture_width: [3, 1]}]
+      - [25, 26, {alpha: [3, 1], texture_height: [3, 2.5], texture_name: [1, default], texture_scale: [3, 1], texture_width: [3, 1]}]
+      - [26, 3, {alpha: [3, 1], texture_height: [3, 2.5], texture_name: [1, default], texture_scale: [3, 1], texture_width: [3, 1]}]
+      - [3, 2, {alpha: [3, 1], texture_height: [3, 2.5], texture_name: [1, default], texture_scale: [3, 1], texture_width: [3, 1]}]
+      - [2, 25, {alpha: [3, 1], texture_height: [3, 2.5], texture_name: [1, default], texture_scale: [3, 1], texture_width: [3, 1]}]
+      - [28, 29, {alpha: [3, 1], texture_height: [3, 2.5], texture_name: [1, default], texture_scale: [3, 1], texture_width: [3, 1]}]
+      - [29, 27, {alpha: [3, 1], texture_height: [3, 2.5], texture_name: [1, default], texture_scale: [3, 1], texture_width: [3, 1]}]
+      - [27, 30, {alpha: [3, 1], texture_height: [3, 2.5], texture_name: [1, default], texture_scale: [3, 1], texture_width: [3, 1]}]
+      - [31, 32, {alpha: [3, 1], texture_height: [3, 2.5], texture_name: [1, default], texture_scale: [3, 1], texture_width: [3, 1]}]
+      - [32, 33, {alpha: [3, 1], texture_height: [3, 2.5], texture_name: [1, default], texture_scale: [3, 1], texture_width: [3, 1]}]
+      - [33, 34, {alpha: [3, 1], texture_height: [3, 2.5], texture_name: [1, default], texture_scale: [3, 1], texture_width: [3, 1]}]
+      - [34, 35, {alpha: [3, 1], texture_height: [3, 2.5], texture_name: [1, default], texture_scale: [3, 1], texture_width: [3, 1]}]
+      - [35, 36, {alpha: [3, 1], texture_height: [3, 2.5], texture_name: [1, default], texture_scale: [3, 1], texture_width: [3, 1]}]
+      - [36, 37, {alpha: [3, 1], texture_height: [3, 2.5], texture_name: [1, default], texture_scale: [3, 1], texture_width: [3, 1]}]
+      - [37, 38, {alpha: [3, 1], texture_height: [3, 2.5], texture_name: [1, default], texture_scale: [3, 1], texture_width: [3, 1]}]
+      - [38, 39, {alpha: [3, 1], texture_height: [3, 2.5], texture_name: [1, default], texture_scale: [3, 1], texture_width: [3, 1]}]
+lifts: {}
+name: rmf_office_new

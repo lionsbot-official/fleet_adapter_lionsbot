@@ -1,1 +1,5 @@
 *.rdb
+log/
+.env
+.rmf_schedule_node.yaml
+.vscode/
