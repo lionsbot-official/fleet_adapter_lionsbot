@@ -14,6 +14,8 @@
 
 """Robot configuration validation helpers."""
 
+import re
+
 
 def robot_uuids_from_config(config_yaml: dict) -> dict[str, str]:
     """Return configured robot UUIDs, rejecting incomplete robot entries."""
@@ -32,3 +34,25 @@ def robot_uuids_from_config(config_yaml: dict) -> dict[str, str]:
             f'invalid UUID for: {", ".join(invalid_robots)}')
 
     return robot_uuids
+
+
+def rmf_robot_name(vendor_name: str, robot_config: dict) -> str:
+    """Return a name RMF can safely use for `vendor_name`.
+
+    RMF composes per-robot ROS topics from the robot name, e.g.
+    `rmf/dynamic_event/begin/<fleet>/<robot>`. ROS 2 topic segments allow only
+    alphanumerics and underscores and may not start with a digit, but LionsBot
+    encoding IDs contain hyphens (`R3-2200888-SCR`), which aborts the adapter
+    with InvalidTopicNameError.
+
+    The vendor ID stays the identifier used against the LionsBot API; this is
+    only the name RMF sees. Set `robot_config.rmf_name` to choose it yourself.
+    """
+    explicit = robot_config.get('robot_config', {}).get('rmf_name')
+    if isinstance(explicit, str) and explicit.strip():
+        return explicit.strip()
+
+    safe = re.sub(r'[^A-Za-z0-9_]', '_', vendor_name)
+    if not safe or not (safe[0].isalpha() or safe[0] == '_'):
+        safe = f'r_{safe}'
+    return safe

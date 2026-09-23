@@ -37,8 +37,13 @@ class LionsbotRobot:
         dock_paths: dict,
         api: RobotAPI,
         robot_map_levels: dict[str, str] | None = None,
+        rmf_name: str | None = None,
     ):
+        # `name` is the LionsBot encoding ID used for every cloud API call.
+        # `rmf_name` is what RMF is told, which must be a valid ROS topic
+        # segment; they differ whenever the vendor ID contains a hyphen.
         self.name = name
+        self.rmf_name = rmf_name or name
         self.fleet_name = fleet_name
         self.config = config
         self.rmf_config = rmf_config
