@@ -10,12 +10,15 @@ COPY . .
 # does not launch RViz or any RMF visualization node.
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
+      ca-certificates \
       python3-numpy \
       python3-yaml \
       python3-websocket \
       python3-requests \
       python3-pip \
       ros-jazzy-rmw-cyclonedds-cpp && \
+    roots="$(openssl storeutl -noout -text -certs /etc/ssl/certs/ca-certificates.crt)" && \
+    ! grep -E "Subject:.*CN ?= ?(emSign ECC Root CA - G3|AAA Certificate Services)$" <<< "$roots" && \
     python3 -m pip install --break-system-packages \
       nudged==0.3.1 && \
     rosdep update && \

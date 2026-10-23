@@ -1,6 +1,38 @@
 # CHANGELOG
 
-## Unreleased
+## v2.0.1 (2026-10-23)
+
+### Bug Fixes
+
+- fix(SV-9512): the Docker image now installs the patched Ubuntu
+  `ca-certificates` (20260816ubuntu0.24.04.1 or later), so the adapter no
+  longer trusts the compromised eMudhra roots "emSign ECC Root CA - G3" and
+  "AAA Certificate Services". The image build fails if the CA bundle still
+  holds either root. Rebuild deployed images to take the fix. A host that runs
+  the adapter without Docker uses its own CA bundle: run
+  `sudo apt-get install --only-upgrade ca-certificates` on it.
+
+
+## v2.0.0 (2026-08-17)
+
+### Breaking Changes
+
+- **LeoScrub robots are no longer supported.** The `fleet_adapter_leoscrub`
+  package has been removed. Deployments running LeoScrub fleets should remain
+  on v1.1.2.
+- **The adapter is now a single `fleet_adapter` package.** It replaces the
+  former `fleet_adapter_r3` package, so any installation or launch
+  configuration referring to `fleet_adapter_r3` by name must be updated.
+- **ROS 2 Jazzy is now required** (previously Foxy/Galactic), which in turn
+  requires Ubuntu 24.04.
+
+### Features
+
+- Support for R3 (Vac, Scrub Pro) and R5 robot families. REX support is in
+  testing.
+- Docker Compose deployment and an RViz visualisation stack.
+- A documented configuration template (`configs/config_template.yaml`) plus a
+  worked `office_new` example.
 
 ### Bug Fixes
 

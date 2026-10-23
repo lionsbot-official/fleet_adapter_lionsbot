@@ -1,0 +1,42 @@
+# Canonical author identities.
+#
+# Contributors here have committed under several names and addresses over the
+# years -- personal vs work email, GitLab web-UI merge commits, machine
+# hostnames. This file collapses them so `git shortlog`, `git blame` and the
+# release-contributor detection in .gitlab-ci.yml each attribute work to one
+# identity per person.
+#
+# Format: Canonical Name <canonical@email>  <other@email>
+#     or: Canonical Name <canonical@email>  Other Name <other@email>
+#
+# Prefer the address the person uses on GitHub as the canonical one: published
+# release commits carry Co-authored-by trailers built from these values, and
+# GitHub only links the credit to a profile when it recognises the address.
+#
+# When a new contributor commits under more than one identity, add them here.
+
+Celes Chai <celes.chai@gmail.com> <jia.xuan@lionsbot.com>
+Celes Chai <celes.chai@gmail.com> celeschai <celes.chai@gmail.com>
+
+Dani Purwadi <dani.purwadi@lionsbot.com> danipurwadi <dani.purwadi@lionsbot.com>
+Dani Purwadi <dani.purwadi@lionsbot.com> danipurwadi-lb <dani.purwadi@lionsbot.com>
+Dani Purwadi <dani.purwadi@lionsbot.com> <60135314+danipurwadi@users.noreply.github.com>
+
+Yong San Chia <yongsan@lionsbot.com> yongsan <yongsan@lionsbot.com>
+Yong San Chia <yongsan@lionsbot.com> <yongsan@Yongs-MacBook-Pro.local>
+
+Xiu Wen Seow <xiuwenseow@yahoo.com.sg> Xiu Wen <xiuwenseow@yahoo.com.sg>
+Xiu Wen Seow <xiuwenseow@yahoo.com.sg> <intern6@lionsbot.com>
+
+Jordan Wong <jordanwwb29@gmail.com> jordanwwb <jordanwwb29@gmail.com>
+Jordan Wong <jordanwwb29@gmail.com> <intern4@lionsbot.com>
+
+Joel <joel@lionsbot.com> joelcch <joel@lionsbot.com>
+Joel <joel@lionsbot.com> lb-joel <joel@lionsbot.com>
+
+Terry Tay <terry.tay@lionsbot.com> terry.tay <terry.tay@lionsbot.com>
+
+Chai Hong Khor <chaihong.khor@lionsbot.com> chaihong.khor <chaihong.khor@lionsbot.com>
+Chai Hong Khor <chaihong.khor@lionsbot.com> Chai Hong <chaihong.khor@lionsbot.com>
+
+M Khairul <khairul@lionsbot.com> kai <khairul@lionsbot.com>

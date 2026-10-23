@@ -17,6 +17,12 @@ Currently, fleet adapters are developed and have been tested for these supported
 | R5 | R5 |
 | REX | Testing in progress |
 
+> **Upgrading from v1.x?** LeoScrub robots are no longer supported as of v2.0.0,
+> and the `fleet_adapter_r3` and `fleet_adapter_leoscrub` packages have been
+> replaced by a single `fleet_adapter` package. v2.0.0 also requires ROS 2 Jazzy
+> on Ubuntu 24.04. Deployments running LeoScrub fleets should remain on
+> [v1.1.2](https://github.com/lionsbot-official/fleet_adapter_lionsbot/releases/tag/v1.1.2).
+
 ## Table of contents
 
 - [Quick start](#quick-start)
