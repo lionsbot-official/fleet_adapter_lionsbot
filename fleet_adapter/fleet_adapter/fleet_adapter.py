@@ -25,6 +25,7 @@ import traceback
 
 import numpy as np
 from fleet_adapter.LionsbotRobot import LionsbotRobot
+from fleet_adapter.utils.robot_config import rmf_robot_name
 import rclpy
 from rclpy.duration import Duration
 import rclpy.node
@@ -103,7 +104,8 @@ def make_fleet_configuration(
     robots = {}
     for robot_name, robot_config in config_yaml['robots'].items():
         rmf_config = robot_config['rmf_config']
-        robots[robot_name] = {'charger': rmf_config['charger']['waypoint']}
+        robots[rmf_robot_name(robot_name, robot_config)] = {
+            'charger': rmf_config['charger']['waypoint']}
         update_frequencies.append(
             rmf_config.get('robot_state_update_frequency', 1.0))
 
@@ -306,9 +308,11 @@ def start_add_fleet_robots_thread(
         robot_map_names.setdefault(rmf_level, robot_map_name)
         robot_map_levels.setdefault(rmf_level, robot_map_level)
 
-        configuration = fleet_config.get_known_robot_configuration(robot_name)
+        configuration = fleet_config.get_known_robot_configuration(
+            rmf_robot_name(robot_name, robot_config))
         robot = LionsbotRobot(
             name=robot_name,
+            rmf_name=rmf_robot_name(robot_name, robot_config),
             fleet_name=fleet_name,
             config=robot_config,
             rmf_config=rmf_config,
@@ -462,7 +466,7 @@ def start_add_fleet_robots_thread(
                     continue
 
                 update_handle = fleet_handle.add_robot(
-                    robot.name,
+                    robot.rmf_name,
                     robot.make_state(),
                     robot.configuration,
                     robot.make_callbacks(),
