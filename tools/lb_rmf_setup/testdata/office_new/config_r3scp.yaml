@@ -1,0 +1,71 @@
+map_transform:
+  L8:
+    transform_values:
+      rotation_degrees: 178.947
+      scale: 0.0514713
+      tx_meters: 46.278
+      ty_meters: 75.834
+rmf_fleet:
+  account_for_battery_drain: true
+  ambient_system:
+    power: 20.0
+  battery_system:
+    capacity: 40.0
+    charging_current: 26.4
+    voltage: 24.0
+  docks:
+    refuel_891:
+      heading: 0.08300105075706732
+      level_name: L8
+      robot_dock_name: refuel_891
+  fleet_manager:
+    password: $LIONSBOT_PASSWORD
+    prefix: api.lionsbot.io
+    user: $LIONSBOT_USER
+  limits:
+    angular:
+    - 0.15
+    - 0.3
+    linear:
+    - 0.15
+    - 0.025
+  mechanical_system:
+    friction_coefficient: 0.2
+    mass: 80.0
+    moment_of_inertia: 20.0
+  name: r3
+  profile:
+    footprint: 0.5
+    vicinity: 0.6
+  publish_fleet_state: true
+  recharge_soc: 1
+  recharge_threshold: 0.3
+  reversible: false
+  task_capabilities:
+    clean: true
+    delivery: false
+    finishing_request: charge
+    loop: false
+  tool_system:
+    power: 760.0
+robots:
+  R3SCP-B02357:
+    rmf_config:
+      charger:
+        waypoint: refuel_891
+      robot_state_update_frequency: 10
+      start:
+        localization_starting_point:
+          heading: 0
+          x: 357
+          y: 773
+        rmf_level: L8
+        robot_map_name: rmf_test
+    robot_config:
+      max_delay: 15.0
+      navigation:
+        max_retries: 5
+        timeout_grace_sec: 60
+        max_timeout_sec: 300
+        xy_goal_tolerance: 50
+      uuid: 37defd58-0f13-4e68-99be-f7987b3a6900

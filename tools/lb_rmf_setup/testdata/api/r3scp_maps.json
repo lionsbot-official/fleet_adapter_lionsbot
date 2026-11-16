@@ -1,0 +1,35 @@
+{
+ "currentMapId": "5d1f6c1a-8e37-4f0e-9b8e-1f2a3b4c5d6e",
+ "workSiteMaps": [
+  {
+   "id": "5d1f6c1a-8e37-4f0e-9b8e-1f2a3b4c5d6e",
+   "name": "rmf_office_new",
+   "level": "8",
+   "building": "Office",
+   "pngRawLink": "{server}/signed/rmf_office_new.png?X-Signature=abc",
+   "gridPngLink": "{server}/signed/grid.png?X-Signature=abc",
+   "isSynced": true,
+   "lastModifiedDate": "2026-11-01T02:03:04.000+00:00",
+   "frame": {
+    "resolution": 0.05,
+    "originX": -17.56,
+    "originY": -20.93,
+    "width": 647,
+    "height": 1193,
+    "occupiedThresh": 0.65,
+    "freeThresh": 0.195
+   }
+  },
+  {
+   "id": "9a8b7c6d-0000-4000-8000-000000000001",
+   "name": "old_map",
+   "level": "1",
+   "building": "Office",
+   "pngRawLink": null,
+   "gridPngLink": null,
+   "isSynced": false,
+   "lastModifiedDate": null,
+   "frame": null
+  }
+ ]
+}

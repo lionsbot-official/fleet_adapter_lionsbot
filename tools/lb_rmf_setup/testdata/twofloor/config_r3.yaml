@@ -1,0 +1,15 @@
+map_transform:
+  L1:
+    transform_values:
+      rotation_degrees: 0
+      scale: 0.05
+      tx_meters: 0
+      ty_meters: 0
+  L3:
+    transform_values:
+      rotation_degrees: 0
+      scale: 0.05
+      tx_meters: 0
+      ty_meters: 0
+rmf_fleet:
+  name: r3

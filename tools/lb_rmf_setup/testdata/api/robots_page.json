@@ -1,0 +1,17 @@
+{
+ "content": [
+  {
+   "id": "37defd58-0f13-4e68-99be-f7987b3a6900",
+   "robotEncodingId": "R3SCP-B02357",
+   "autonomyVersion": "1.16.2",
+   "robotType": "ScrubPro",
+   "robotFamily": "R3",
+   "state": "IDLE",
+   "isOnline": true,
+   "worksiteName": "Office"
+  }
+ ],
+ "last": true,
+ "totalPages": 1,
+ "number": 0
+}

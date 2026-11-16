@@ -1,0 +1,30 @@
+coordinate_system: reference_image
+levels:
+  L1:
+    elevation: 0
+    lanes:
+    - - 0
+      - 1
+      - bidirectional:
+        - 4
+        - true
+    measurements:
+    - - 0
+      - 1
+      - distance:
+        - 3
+        - 5.0
+    vertices:
+    - - 100.0
+      - 200.0
+      - 0
+      - ''
+    - - 200.0
+      - 200.0
+      - 0
+      - dock_1
+      - dock_name:
+        - 1
+        - dock_1
+lifts: {}
+name: block_style

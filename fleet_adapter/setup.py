@@ -6,7 +6,7 @@ package_name = 'fleet_adapter'
 
 setup(
     name=package_name,
-    version='2.0.1',
+    version='2.1.0',
     packages=find_packages(exclude=['test', 'test.*', '*.test', '*.test.*']),
     data_files=[
         ('share/ament_index/resource_index/packages',
@@ -34,6 +34,7 @@ setup(
     entry_points={
         'console_scripts': [
             'fleet_adapter=fleet_adapter.fleet_adapter:main',
+            'mock_lift_adapter=fleet_adapter.mock_lift_adapter:main',
             'building_3d_visualizer=fleet_adapter.visualization.building_3d_visualizer:main',
             'robot_marker_visualizer=fleet_adapter.visualization.robot_marker_visualizer:main',
         ],

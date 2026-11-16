@@ -9,17 +9,17 @@
 # placeholders for a real site.
 map_transform:
   <rmf_level>:
-    # Alignment of the RMF floorplan image in Lionsbot-map pixels. Keep these
-    # defaults when the floorplan origins and scale already match.
-    level_transform:
-      scale: 1.0
-      tx_pixels: 0.0
-      ty_pixels: 0.0
     transform_values:
       rotation_degrees: 0.0
-      scale: 1.0
+      scale: <metres_per_pixel>
       tx_meters: 0.0
       ty_meters: 0.0
+    # level_transform places a level that is not the reference level. The
+    # reference level is `reference_level_name` of the building file, or its
+    # first level. The setup tool's `export` writes level_transform from the
+    # fiducials when the level has none. It needs 2 fiducials with the same
+    # names on this level and on the reference level. A floorplan image that
+    # is rotated against the reference level is not supported.
 
 rmf_fleet:
   # Must be unique among all fleets connected to the same RMF deployment.
@@ -72,12 +72,25 @@ rmf_fleet:
     user: $LIONSBOT_USER
     password: $LIONSBOT_PASSWORD
 
+# Experimental features. Each one is off unless its key is `true`. The adapter
+# stops at start when a key here is unknown or a value is not true or false.
+experimental:
+  # Move a robot into and out of a lift car with dedicated lift commands.
+  # LionsBot must enable lift commands on each robot before you set this key
+  # to true. See section 3 of the README.
+  lift_commands: false
+
 # Add one entry per physical robot. The mapping key is the Lionsbot robot name.
 robots:
   <lionsbot_robot_name>:
     robot_config:
       # Lionsbot robot's UUID
       uuid: <robot_uuid>
+      # Optional. The robot name that RMF uses. Letters, digits and underscores
+      # only, not starting with a digit, and different for each robot. Without
+      # it, the adapter derives the name from the Lionsbot robot name
+      # (R3SCP-B02357 becomes R3SCP_B02357).
+      # rmf_name: <rmf_robot_name>
       # Navigation safeguards.
       max_delay: 15.0
       navigation:
@@ -101,3 +114,10 @@ robots:
         rmf_level: <rmf_level>
         # Lionsbot map name on the robot.
         robot_map_name: <lionsbot_map_name>
+        robot_map_level: <lionsbot_map_level>
+      # For a robot that works on more than one RMF level: the robot map of each
+      # other level. The setup script reads it too.
+      # robot_maps:
+      #   <other_rmf_level>:
+      #     name: <lionsbot_map_name>
+      #     level: <lionsbot_map_level>

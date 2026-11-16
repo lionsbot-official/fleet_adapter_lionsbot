@@ -166,6 +166,19 @@ class CommandHandle:
         execution.finished()
         return True
 
+    def abandon(self, execution) -> bool:
+        """Drop the active command and tell RMF nothing.
+
+        A finished command tells RMF that the robot is at the destination.
+        Use this when that is not true and RMF must not continue from it.
+        """
+        with self._command_state_lock:
+            active = self._active_command
+            if active is None or active.execution is not execution:
+                return False
+            self._active_command = None
+        return True
+
     def wait(self, seconds: float, execution=None) -> bool:
         if self._worker_wakeup.wait(seconds):
             self._worker_wakeup.clear()

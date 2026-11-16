@@ -1,0 +1,17 @@
+rmf_fleet:
+  name: "r3"
+
+robots:
+  R3SCP-B02357:
+    robot_config:
+      uuid: "00000000-0000-0000-0000-000000000001"
+  R5SCR-DV30019:
+    robot_config:
+      uuid: "00000000-0000-0000-0000-000000000002"
+  R3-2200888-SCR:
+    robot_config:
+      uuid: "00000000-0000-0000-0000-000000000003"
+  R3SCP-TEST01:
+    robot_config:
+      uuid: "00000000-0000-0000-0000-000000000004"
+      rmf_name: "lobby_scrubber"

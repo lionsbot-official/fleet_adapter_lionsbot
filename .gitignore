@@ -3,3 +3,7 @@ log/
 .env
 .rmf_schedule_node.yaml
 .vscode/
+__pycache__/
+.coverage
+*.egg-info/
+build/

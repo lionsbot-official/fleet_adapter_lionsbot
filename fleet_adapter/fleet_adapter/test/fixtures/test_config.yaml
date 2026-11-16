@@ -1,19 +1,3 @@
-# output/office/office.building.yaml was generated with:
-# python3 generate_rmf_yaml.py \ 
-# -i test/fixtures/info_files/L3_office.info \ 
-# -c test/fixtures/test_config.yaml  \
-# -b test/fixtures/building_input/office/office.building.yaml \
-# -l L3 \
-# -o test/fixtures/output/office 
-
-# output/fiducial/fiducial.building.yaml was generated with:
-# python3 generate_rmf_yaml.py \ 
-# -i test/fixtures/info_files/L5_fiducial.info \ 
-# -c test/fixtures/test_config.yaml  \
-# -b test/fixtures/building_input/fiducial/fiducial.building.yaml \
-# -l L5 \
-# -o test/fixtures/output/fiducial 
-
 rmf_fleet:
   name: "r3"
 

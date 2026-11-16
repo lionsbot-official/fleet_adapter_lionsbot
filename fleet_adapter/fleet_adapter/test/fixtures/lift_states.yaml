@@ -1,0 +1,93 @@
+# Lift states as the site's RMF lift adapter publishes them on lift_states.
+# door_state: 0 closed, 1 moving, 2 open. motion_state: 0 stopped, 1 up,
+# 2 down, 3 unknown.
+lift: LiftA
+floor: L1
+session_id: r3/R3VAC_B00000
+max_age_seconds: 10.0
+
+ready_state: &ready
+  lift_name: LiftA
+  current_floor: L1
+  door_state: 2
+  motion_state: 0
+  session_id: r3/R3VAC_B00000
+
+ready:
+  - name: car at the floor, doors open, stopped, session of this robot
+    state: *ready
+    age_seconds: 0.0
+    problem:
+  - name: state just inside the age limit
+    state: *ready
+    age_seconds: 9.9
+    problem:
+  - name: no state for the lift
+    state:
+    age_seconds: 0.0
+    problem: no_state
+  - name: state older than the age limit
+    state: *ready
+    age_seconds: 10.1
+    problem: stale_state
+  - name: car at a different floor
+    state: {<<: *ready, current_floor: L3}
+    age_seconds: 0.0
+    problem: other_floor
+  - name: doors closed
+    state: {<<: *ready, door_state: 0}
+    age_seconds: 0.0
+    problem: doors_not_open
+  - name: doors moving
+    state: {<<: *ready, door_state: 1}
+    age_seconds: 0.0
+    problem: doors_not_open
+  - name: car moving up
+    state: {<<: *ready, motion_state: 1}
+    age_seconds: 0.0
+    problem: not_stopped
+  - name: car moving down
+    state: {<<: *ready, motion_state: 2}
+    age_seconds: 0.0
+    problem: not_stopped
+  - name: motion not known
+    state: {<<: *ready, motion_state: 3}
+    age_seconds: 0.0
+    problem: not_stopped
+  - name: session of a different robot
+    state: {<<: *ready, session_id: r3/R3VAC_B00001}
+    age_seconds: 0.0
+    problem: other_session
+  - name: no session
+    state: {<<: *ready, session_id: ""}
+    age_seconds: 0.0
+    problem: other_session
+
+unsafe:
+  - name: car stays ready
+    state: *ready
+    problem:
+  - name: no state for the lift
+    state:
+    problem:
+  - name: doors start to close
+    state: {<<: *ready, door_state: 1}
+    problem:
+  - name: motion not known
+    state: {<<: *ready, motion_state: 3}
+    problem:
+  - name: car moves up
+    state: {<<: *ready, motion_state: 1}
+    problem: car_moved
+  - name: car moves down
+    state: {<<: *ready, motion_state: 2}
+    problem: car_moved
+  - name: car is at a different floor
+    state: {<<: *ready, current_floor: L3}
+    problem: car_moved
+  - name: session passes to a different robot
+    state: {<<: *ready, session_id: r3/R3VAC_B00001}
+    problem: other_session
+  - name: session ends
+    state: {<<: *ready, session_id: ""}
+    problem: other_session

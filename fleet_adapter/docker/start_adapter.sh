@@ -3,7 +3,7 @@ set -euo pipefail
 
 export ROS_DOMAIN_ID="${ROS_DOMAIN_ID:-0}"
 export RMW_IMPLEMENTATION="${RMW_IMPLEMENTATION:-rmw_cyclonedds_cpp}"
-export CYCLONEDDS_URI='<CycloneDDS><Domain id="any"><Discovery><ParticipantIndex>none</ParticipantIndex></Discovery></Domain></CycloneDDS>'
+export CYCLONEDDS_URI="${CYCLONEDDS_URI:-<CycloneDDS><Domain id=\"any\"><Discovery><ParticipantIndex>none</ParticipantIndex></Discovery></Domain></CycloneDDS>}"
 
 # ROS setup scripts may reference unset shell variables, so source them with
 # nounset disabled. Restore strict variable checking before starting the node.
@@ -87,22 +87,6 @@ with open(target_path, "w") as target_file:
     --server_uri "$SERVER_URI" \
     --ros-args -p use_sim_time:="${USE_SIM_TIME:-false}"
 }
-
-# Adapter.make() requires the RMF schedule node to be ready when it starts.
-SCHEDULE_NODE="${SCHEDULE_NODE:-/rmf_traffic_schedule}"
-SCHEDULE_TIMEOUT="${SCHEDULE_TIMEOUT:-60}"
-echo "Waiting up to ${SCHEDULE_TIMEOUT}s for ${SCHEDULE_NODE}..."
-for ((attempt = 1; attempt <= SCHEDULE_TIMEOUT; attempt++)); do
-  if ros2 node list 2>/dev/null | grep -qx "$SCHEDULE_NODE"; then
-    echo "Found ${SCHEDULE_NODE}."
-    break
-  fi
-  if (( attempt == SCHEDULE_TIMEOUT )); then
-    echo "Timed out waiting for ${SCHEDULE_NODE}." >&2
-    exit 1
-  fi
-  sleep 1
-done
 
 echo "Starting fleet adapters..."
 run_fleet_adapter "$FLEET_CONFIG" "$NAV_GRAPH"

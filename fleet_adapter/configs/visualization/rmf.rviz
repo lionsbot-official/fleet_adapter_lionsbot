@@ -114,18 +114,15 @@ Visualization Manager:
       Value: true
     - Class: rviz_default_plugins/MarkerArray
       Enabled: true
-      Name: MarkerArray
+      Name: Robots and Lift Cars 3D
       Namespaces:
-        r3: true
-        r3_nose: true
-        r5: true
-        r5_nose: true
+        {}
       Topic:
         Depth: 10
         Durability Policy: Volatile
         History Policy: Keep Last
         Reliability Policy: Reliable
-        Value: /custom_fleet_markers
+        Value: /building_3d_live_markers
       Value: true
     - Alpha: 0.20000000298023224
       Binary representation: false
@@ -133,7 +130,7 @@ Visualization Manager:
       Class: rviz_default_plugins/Map
       Color Scheme: map
       Draw Behind: true
-      Enabled: true
+      Enabled: false
       Name: Map
       Topic:
         Depth: 5
@@ -149,7 +146,7 @@ Visualization Manager:
         Reliability Policy: Reliable
         Value: /floor_plan_updates
       Use Timestamp: false
-      Value: true
+      Value: false
     - Class: rviz_default_plugins/MarkerArray
       Enabled: true
       Name: Building Systems Markers
@@ -164,10 +161,9 @@ Visualization Manager:
       Value: true
     - Class: rviz_default_plugins/MarkerArray
       Enabled: true
-      Name: Building 3D Walls
+      Name: Building 3D
       Namespaces:
-        building_floors/L8: false
-        building_walls/L8: true
+        {}
       Topic:
         Depth: 5
         Durability Policy: Transient Local
@@ -219,7 +215,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 8.886666297912598
+      Distance: 60
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -228,16 +224,16 @@ Visualization Manager:
       Focal Point:
         X: 29.601064682006836
         Y: -36.78025436401367
-        Z: 5.140363693237305
+        Z: 0
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.8947975039482117
+      Pitch: 0.5
       Target Frame: <Fixed Frame>
-      Value: TopDownOrtho (rviz_default_plugins)
-      Yaw: 4.783166885375977
+      Value: Orbit (rviz_default_plugins)
+      Yaw: 4.2
     Saved: ~
 Window Geometry:
   Displays:

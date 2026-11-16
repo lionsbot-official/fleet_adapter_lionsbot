@@ -1,0 +1,274 @@
+{
+  "robot_id": "R3VAC-B00000",
+  "other_robot_id": "R3VAC-B00001",
+  "request_id": "rmf-R3VAC-B00000-00000000000000000000000000000001",
+  "map": {"id": "11111111-1111-1111-1111-111111111111", "building": "E1", "level": "L3", "name": "E1_L3"},
+  "commands": [
+    {
+      "name": "enter the lift car",
+      "command": "lift_enter_start",
+      "lift": "lift_a",
+      "frame": {
+        "operation_cmd": "lift_enter_start",
+        "robot_id": "R3VAC-B00000",
+        "content": {
+          "request_id": "rmf-R3VAC-B00000-00000000000000000000000000000001",
+          "lift": "lift_a",
+          "map": {"building": "E1", "level": "L3", "map_name": "E1_L3"}
+        }
+      }
+    },
+    {
+      "name": "exit the lift car",
+      "command": "lift_exit_start",
+      "lift": "lift_a",
+      "frame": {
+        "operation_cmd": "lift_exit_start",
+        "robot_id": "R3VAC-B00000",
+        "content": {
+          "request_id": "rmf-R3VAC-B00000-00000000000000000000000000000001",
+          "lift": "lift_a",
+          "map": {"building": "E1", "level": "L3", "map_name": "E1_L3"}
+        }
+      }
+    }
+  ],
+  "stop_frame": {
+    "operation_cmd": "p2p_stop",
+    "robot_id": "R3VAC-B00000",
+    "content": {"status": true}
+  },
+  "end_statuses": [
+    {
+      "name": "enter move reached the cabin point",
+      "command": "lift_enter_start",
+      "frame": {
+        "operation_fb": "lift_enter_end_status",
+        "robot_id": "R3VAC-B00000",
+        "timestamp": 1731300012345,
+        "content": {"status": true, "request_id": "rmf-R3VAC-B00000-00000000000000000000000000000001"}
+      },
+      "state": "succeeded"
+    },
+    {
+      "name": "exit move reached the approach point",
+      "command": "lift_exit_start",
+      "frame": {
+        "operation_fb": "lift_exit_end_status",
+        "robot_id": "R3VAC-B00000",
+        "timestamp": 1731300012345,
+        "content": {"status": true, "request_id": "rmf-R3VAC-B00000-00000000000000000000000000000001"}
+      },
+      "state": "succeeded"
+    },
+    {
+      "name": "enter move refused by the robot with a code",
+      "command": "lift_enter_start",
+      "frame": {
+        "operation_fb": "lift_enter_end_status",
+        "robot_id": "R3VAC-B00000",
+        "timestamp": 1731300012345,
+        "content": {"status": false, "request_id": "rmf-R3VAC-B00000-00000000000000000000000000000001", "error_code": "CIM00009"}
+      },
+      "state": "failed",
+      "error_code": "CIM00009"
+    },
+    {
+      "name": "exit move failed on the robot with a code",
+      "command": "lift_exit_start",
+      "frame": {
+        "operation_fb": "lift_exit_end_status",
+        "robot_id": "R3VAC-B00000",
+        "timestamp": 1731300012345,
+        "content": {"status": false, "request_id": "rmf-R3VAC-B00000-00000000000000000000000000000001", "error_code": "CIM00445"}
+      },
+      "state": "failed",
+      "error_code": "CIM00445"
+    },
+    {
+      "name": "enter move ended by a stop",
+      "command": "lift_enter_start",
+      "frame": {
+        "operation_fb": "lift_enter_end_status",
+        "robot_id": "R3VAC-B00000",
+        "timestamp": 1731300012345,
+        "content": {"status": false, "request_id": "rmf-R3VAC-B00000-00000000000000000000000000000001", "aborted": true}
+      },
+      "state": "failed",
+      "aborted": true
+    }
+  ],
+  "ignored_end_statuses": [
+    {
+      "name": "end of a lift ride that the robot runs itself, no request_id",
+      "command": "lift_enter_start",
+      "frame": {
+        "operation_fb": "lift_enter_end_status",
+        "robot_id": "R3VAC-B00000",
+        "timestamp": 1731300012345,
+        "content": {"status": true}
+      }
+    },
+    {
+      "name": "lift ride end status with a booking and no request_id",
+      "command": "lift_enter_start",
+      "frame": {
+        "operation_fb": "lift_enter_end_status",
+        "robot_id": "R3VAC-B00000",
+        "timestamp": 1731300012345,
+        "content": {"status": false, "booking_ref": "trip-1#2"}
+      }
+    },
+    {
+      "name": "an empty request_id",
+      "command": "lift_enter_start",
+      "frame": {
+        "operation_fb": "lift_enter_end_status",
+        "robot_id": "R3VAC-B00000",
+        "timestamp": 1731300012345,
+        "content": {"status": true, "request_id": ""}
+      }
+    },
+    {
+      "name": "the request_id of a different command",
+      "command": "lift_enter_start",
+      "frame": {
+        "operation_fb": "lift_enter_end_status",
+        "robot_id": "R3VAC-B00000",
+        "timestamp": 1731300012345,
+        "content": {"status": true, "request_id": "rmf-R3VAC-B00000-00000000000000000000000000000000"}
+      }
+    },
+    {
+      "name": "the end status of the other lift command",
+      "command": "lift_enter_start",
+      "frame": {
+        "operation_fb": "lift_exit_end_status",
+        "robot_id": "R3VAC-B00000",
+        "timestamp": 1731300012345,
+        "content": {"status": true, "request_id": "rmf-R3VAC-B00000-00000000000000000000000000000001"}
+      }
+    },
+    {
+      "name": "a status that is not a boolean",
+      "command": "lift_enter_start",
+      "frame": {
+        "operation_fb": "lift_enter_end_status",
+        "robot_id": "R3VAC-B00000",
+        "timestamp": 1731300012345,
+        "content": {"status": "true", "request_id": "rmf-R3VAC-B00000-00000000000000000000000000000001"}
+      }
+    },
+    {
+      "name": "the error of the other lift command",
+      "command": "lift_enter_start",
+      "frame": {
+        "operation_fb": "lift_exit_start",
+        "robot_id": "R3VAC-B00000",
+        "timestamp": 1731300012345,
+        "content": {
+          "status": false,
+          "error": {"errorCode": "WSSE00019", "errorData": {"robotEncodingId": "R3VAC-B00000", "reason": "RCSE00013: robot is offline"}}
+        }
+      }
+    }
+  ],
+  "errors": [
+    {
+      "name": "the robot did not confirm the command",
+      "command": "lift_enter_start",
+      "frame": {
+        "operation_fb": "lift_enter_start",
+        "robot_id": "R3VAC-B00000",
+        "timestamp": 1731300012345,
+        "content": {
+          "status": false,
+          "error": {"errorCode": "WSSE00019", "errorData": {"robotEncodingId": "R3VAC-B00000", "reason": "RCSE00006: command timed out waiting for robot feedback"}}
+        }
+      },
+      "error_code": "WSSE00019",
+      "reason_code": "RCSE00006",
+      "reason": "RCSE00006: command timed out waiting for robot feedback"
+    },
+    {
+      "name": "the robot model does not support the command",
+      "command": "lift_enter_start",
+      "frame": {
+        "operation_fb": "lift_enter_start",
+        "robot_id": "R3VAC-B00000",
+        "timestamp": 1731300012345,
+        "content": {
+          "status": false,
+          "error": {"errorCode": "WSSE00019", "errorData": {"robotEncodingId": "R3VAC-B00000", "reason": "RCSE00005: robot does not satisfy the minimum autonomy version"}}
+        }
+      },
+      "error_code": "WSSE00019",
+      "reason_code": "RCSE00005",
+      "reason": "RCSE00005: robot does not satisfy the minimum autonomy version"
+    },
+    {
+      "name": "the robot is offline",
+      "command": "lift_exit_start",
+      "frame": {
+        "operation_fb": "lift_exit_start",
+        "robot_id": "R3VAC-B00000",
+        "timestamp": 1731300012345,
+        "content": {
+          "status": false,
+          "error": {"errorCode": "WSSE00019", "errorData": {"robotEncodingId": "R3VAC-B00000", "reason": "RCSE00013: robot is offline"}}
+        }
+      },
+      "error_code": "WSSE00019",
+      "reason_code": "RCSE00013",
+      "reason": "RCSE00013: robot is offline"
+    },
+    {
+      "name": "a reason that is a code with no text",
+      "command": "lift_enter_start",
+      "frame": {
+        "operation_fb": "lift_enter_start",
+        "robot_id": "R3VAC-B00000",
+        "timestamp": 1731300012345,
+        "content": {
+          "status": false,
+          "error": {"errorCode": "WSSE00019", "errorData": {"robotEncodingId": "R3VAC-B00000", "reason": "RCSE00013"}}
+        }
+      },
+      "error_code": "WSSE00019",
+      "reason_code": "RCSE00013",
+      "reason": "RCSE00013"
+    },
+    {
+      "name": "a reason with no code",
+      "command": "lift_exit_start",
+      "frame": {
+        "operation_fb": "lift_exit_start",
+        "robot_id": "R3VAC-B00000",
+        "timestamp": 1731300012345,
+        "content": {
+          "status": false,
+          "error": {"errorCode": "WSSE00019", "errorData": {"robotEncodingId": "R3VAC-B00000", "reason": "robot command service answered with status 502"}}
+        }
+      },
+      "error_code": "WSSE00019",
+      "reason_code": null,
+      "reason": "robot command service answered with status 502"
+    },
+    {
+      "name": "an error with no reason",
+      "command": "lift_enter_start",
+      "frame": {
+        "operation_fb": "lift_enter_start",
+        "robot_id": "R3VAC-B00000",
+        "timestamp": 1731300012345,
+        "content": {
+          "status": false,
+          "error": {"errorCode": "WSSE00019", "errorData": {"robotEncodingId": "R3VAC-B00000"}}
+        }
+      },
+      "error_code": "WSSE00019",
+      "reason_code": null,
+      "reason": null
+    }
+  ]
+}

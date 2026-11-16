@@ -180,3 +180,50 @@ def test_docked_not_charging_sends_one_alert_per_incident():
         robot._monitor_docked_not_charging()
 
     assert not robot._docked_not_charging_alert_sent
+
+
+def test_docked_not_charging_alert_names_the_rmf_robot():
+    robot = LionsbotRobot.__new__(LionsbotRobot)
+    robot.name = 'R3SCP-B02357'
+    robot.rmf_name = 'R3SCP_B02357'
+    robot.fleet_name = 'r3'
+    robot.node = MagicMock()
+    robot.rmf_web_alerts_url = 'http://rmf-web.test/alerts/request'
+    robot.rmf_web_api_token = 'test'
+
+    with patch(
+            'fleet_adapter.fleet_adapter.LionsbotRobot.requests.post') as post:
+        robot._send_docked_not_charging_alert(60.0, {
+            'status': RobotRuntimeStatusText.DOCKED.value,
+            'charging': False,
+        })
+
+    payload = post.call_args.kwargs['json']
+    assert payload['subtitle'] == 'r3/R3SCP_B02357'
+    assert {'name': 'robot', 'value': 'R3SCP_B02357'} in \
+        payload['alert_parameters']
+
+
+def test_dock_sends_the_reverse_of_the_arrival_heading():
+    # RMF arrives at the dock facing into the charger. dock_start takes the
+    # dock marker heading, which points out of the charger.
+    transform = FakeTransform()
+    robot = make_robot(transform)
+    robot.graph = MagicMock()
+    robot.graph.find_waypoint.return_value = MagicMock(
+        location=[19.0, -23.5], charger=True)
+    robot.api.send_docking_command.return_value = True
+    robot.api.dock_robot.return_value = CommandResult.SUCCESS
+    dock_destination = MagicMock(map='L8', position=[19.0, -23.5, -1.0])
+    execution = MagicMock()
+
+    robot._dock_worker('charging_1', 'test', dock_destination, execution)
+
+    content = robot.api.send_docking_command.call_args.kwargs['content']
+    assert content.name == 'charging_1'
+    assert content.x == pytest.approx(190.0)
+    assert content.y == pytest.approx(-235.0)
+    assert content.heading == pytest.approx(
+        MapTransform.wrap_orientation(-1.0 + math.pi))
+    robot._finish_execution.assert_called_once_with(execution)
+    robot._fail_execution.assert_not_called()

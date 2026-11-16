@@ -18,10 +18,19 @@ set +a
 
 : "${LIONSBOT_USER:?Please export LIONSBOT_USER before running run_fleet.sh}"
 : "${LIONSBOT_PASSWORD:?Please export LIONSBOT_PASSWORD before running run_fleet.sh}"
+: "${FOLDER_NAME:?Please set FOLDER_NAME in .env}"
+RMF_MAP_NAME="${RMF_MAP_NAME:-rmf_${FOLDER_NAME}}"
+RMF_FLOOR_NAME="${RMF_FLOOR_NAME:-L8}"
+BUILDING_FILE="$SCRIPT_DIR/maps/$FOLDER_NAME/$RMF_MAP_NAME.building.yaml"
+if [[ ! -f "$BUILDING_FILE" ]]; then
+    echo "Error: building file not found: $BUILDING_FILE"
+    echo "Set RMF_MAP_NAME in .env to the name of maps/$FOLDER_NAME/<rmf_map_name>.building.yaml."
+    exit 1
+fi
 export ROS_DOMAIN_ID="${ROS_DOMAIN_ID:-0}"
 export RMW_IMPLEMENTATION="${RMW_IMPLEMENTATION:-rmw_cyclonedds_cpp}"
 export ROS_LOG_DIR="$SCRIPT_DIR/log/ros"
-export CYCLONEDDS_URI='<CycloneDDS><Domain id="any"><Discovery><ParticipantIndex>none</ParticipantIndex></Discovery></Domain></CycloneDDS>'
+export CYCLONEDDS_URI="${CYCLONEDDS_URI:-<CycloneDDS><Domain id=\"any\"><Discovery><ParticipantIndex>none</ParticipantIndex></Discovery></Domain></CycloneDDS>}"
 mkdir -p "$ROS_LOG_DIR"
 
 echo "=== 1. Cleaning up old build artifacts ==="
@@ -50,12 +59,36 @@ set +u
 source install/setup.bash
 set -u
 
-echo "=== 6. Launching RMF ==="
+echo "=== 6. Checking the network for ROS 2 ==="
+if ! python3 "$SCRIPT_DIR/launch/check_network.py"; then
+    echo "Warning: RMF nodes may not find each other until the problem above is fixed."
+fi
+
+echo "=== 7. Exporting the nav graphs from the building file ==="
+ros2 run rmf_building_map_tools building_map_generator nav \
+    "$BUILDING_FILE" "$SCRIPT_DIR/maps/$FOLDER_NAME/"
+
+echo "=== 8. Checking the building file and the fleet configs ==="
+check_arguments=(--building "$BUILDING_FILE")
+for variable in $(compgen -v | grep -E '^FLEET_[0-9]+_CONFIG$'); do
+    config_file="$SCRIPT_DIR/configs/$FOLDER_NAME/${!variable}"
+    if [[ -f "$config_file" ]]; then
+        check_arguments+=(--config "$config_file")
+    else
+        echo "Warning: $variable names $config_file, which does not exist."
+    fi
+done
+if ! python3 "$SCRIPT_DIR/../tools/lb_rmf_setup/lb_rmf_setup.py" check "${check_arguments[@]}"; then
+    echo "Warning: fix the problems above in traffic editor or the config, then start again."
+fi
+
+echo "=== 9. Launching RMF ==="
 RMF_LAUNCH_PID=""
 
 ros2 launch fleet_adapter rmf.launch.xml \
-    map_yaml_file:="$SCRIPT_DIR/maps/$FOLDER_NAME/rmf_${FOLDER_NAME}.building.yaml" \
-    floor_name:=L8 &
+    map_yaml_file:="$BUILDING_FILE" \
+    floor_name:="$RMF_FLOOR_NAME" \
+    mock_lifts:="${MOCK_LIFTS:-false}" &
 RMF_LAUNCH_PID=$!
 
 cleanup() {
@@ -80,11 +113,11 @@ if [[ -z "$RMF_LAUNCH_PID" ]]; then
     exit 1
 fi
 
-echo "=== 7. Starting Docker Compose ==="
+echo "=== 10. Starting Docker Compose ==="
 sudo docker compose -f "$SCRIPT_DIR/launch/docker-compose.yaml" down
 sudo docker compose -f "$SCRIPT_DIR/launch/docker-compose.yaml" up -d
 
-echo "=== 8. Waiting for RMF Schedule Node ==="
+echo "=== 11. Waiting for RMF Schedule Node ==="
 schedule_ready=false
 for attempt in {1..60}; do
     if ros2 node list 2>/dev/null | grep -q '^/rmf_traffic_schedule$'; then
@@ -100,6 +133,7 @@ done
 
 if [[ "$schedule_ready" != true ]]; then
     echo "Error: timed out waiting for /rmf_traffic_schedule."
+    python3 "$SCRIPT_DIR/launch/check_network.py" || true
     exit 1
 fi
 

@@ -1,0 +1,69 @@
+valid:
+  - name: no experimental section
+    config: {}
+    lift_commands: false
+  - name: empty experimental section
+    config:
+      experimental:
+    lift_commands: false
+  - name: experimental section with no key
+    config:
+      experimental: {}
+    lift_commands: false
+  - name: lift commands off
+    config:
+      experimental:
+        lift_commands: false
+    lift_commands: false
+  - name: lift commands on
+    config:
+      experimental:
+        lift_commands: true
+    lift_commands: true
+
+not_a_mapping:
+  - name: a list
+    config:
+      experimental: [lift_commands]
+  - name: a string
+    config:
+      experimental: lift_commands
+  - name: a boolean
+    config:
+      experimental: true
+
+unknown_feature:
+  - name: a misspelled key
+    config:
+      experimental:
+        lift_command: true
+    unknown_keys: [lift_command]
+  - name: a known key and two unknown keys
+    config:
+      experimental:
+        lift_commands: true
+        teleport: true
+        fly: false
+    unknown_keys: [fly, teleport]
+
+not_a_boolean:
+  - name: the text true
+    config:
+      experimental:
+        lift_commands: "true"
+    value: "true"
+  - name: the number 1
+    config:
+      experimental:
+        lift_commands: 1
+    value: 1
+  - name: no value
+    config:
+      experimental:
+        lift_commands:
+    value:
+  - name: the text on
+    config:
+      experimental:
+        lift_commands: "on"
+    value: "on"

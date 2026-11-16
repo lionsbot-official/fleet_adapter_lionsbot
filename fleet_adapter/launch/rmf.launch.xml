@@ -3,6 +3,7 @@
   <arg name="use_sim_time" default="false" description="Use simulation time"/>
   <arg name="floor_name" default="L8" description="Level name to display (e.g., L8)"/>
   <arg name="headless" default="false" description="Do not launch rviz2"/>
+  <arg name="mock_lifts" default="false" description="Start a mock lift adapter. Only for a site with no real lift adapter"/>
 
   <node pkg="rmf_building_map_tools" exec="building_map_server" name="building_map_server" output="screen" 
       args="$(var map_yaml_file) --ros-args -r /building_map:=/map" />
@@ -15,23 +16,26 @@
     <param name="use_sim_time" value="$(var use_sim_time)"/>
   </node>
 
+  <!-- Sends each fleet adapter's lift requests to the lift adapter, one session per lift -->
+  <node pkg="rmf_fleet_adapter" exec="lift_supervisor" output="screen">
+    <param name="use_sim_time" value="$(var use_sim_time)"/>
+  </node>
+
+  <node pkg="fleet_adapter" exec="mock_lift_adapter" output="screen" if="$(var mock_lifts)"/>
+
   <node pkg="rmf_visualization_schedule" exec="schedule_visualizer_node" name="schedule_visualizer" output="screen">
     <param name="use_sim_time" value="$(var use_sim_time)"/>
     <param name="initial_map_name" value="$(var floor_name)"/>
     <param name="rate" value="30.0"/>
   </node>
   
-  <!-- Extrudes the selected level's wall graph into RViz 3D cube markers -->
-  <node pkg="fleet_adapter" exec="building_3d_visualizer" name="building_3d_visualizer" output="screen">
-    <param name="map_topic" value="/map"/>
+  <!-- Draws every level, the lifts and the robots in 3D, and publishes a tf frame for each level -->
+  <node pkg="fleet_adapter" exec="building_3d_visualizer" name="building_3d_visualizer" output="screen"/>
+
+  <!-- Restyles the schedule and map markers of the selected level and puts them in its tf frame -->
+  <node pkg="fleet_adapter" exec="robot_marker_visualizer" name="robot_marker_visualizer" output="screen">
     <param name="floor_name" value="$(var floor_name)"/>
   </node>
-
-  <!-- The building map has no TF publisher; provide the selected level frame. -->
-  <node pkg="tf2_ros" exec="static_transform_publisher" name="building_map_tf" output="screen"
-        args="0 0 0 0 0 0 map $(var floor_name)"/>
-
-  <node pkg="fleet_adapter" exec="robot_marker_visualizer" name="robot_marker_visualizer" output="screen"/>
 
   <!-- Visualizes active building elements (Doors/Lifts) -->
   <node pkg="rmf_visualization_building_systems" exec="rmf_visualization_building_systems" name="building_systems_visualizer" output="screen"

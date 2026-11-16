@@ -21,23 +21,78 @@ variables:
   PUBLIC_REMOTE: "https://github.com/lionsbot-official/fleet_adapter_lionsbot.git"
   # Actual push target. Deploy keys are SSH-only.
   PUBLIC_REMOTE_SSH: "git@github.com:lionsbot-official/fleet_adapter_lionsbot.git"
+  # Ticket key prefixes that must never appear in a published file.
+  INTERNAL_KEY_PREFIXES: "SV"
 
 # ---------------------------------------------------------------------------
 # test
 # ---------------------------------------------------------------------------
 
-# The adapter needs a full ROS 2 Jazzy environment to import, so the unit tests
-# that do not depend on rclpy are run directly and the rest are left to manual
-# verification on a ROS machine. Keep this list in sync as tests gain/lose
-# ROS dependencies.
+# The adapter needs a full ROS 2 Jazzy environment to import. The unit tests
+# listed here run without it: they do not import ROS, or they drive the robot
+# logic through mocks with the stand-ins of fleet_adapter/test/conftest.py.
+# The rest are left to manual verification on a ROS machine. Keep this list in
+# sync as tests gain/lose ROS dependencies.
 unit-tests:
   stage: test
   image: python:3.12-slim
   before_script:
-    - pip install --quiet pytest numpy PyYAML nudged requests
+    - pip install --quiet pytest numpy PyYAML nudged requests websocket-client pillow
   script:
     - cd fleet_adapter
     - pytest fleet_adapter/test/test_MapTransform.py -v
+    - pytest fleet_adapter/test/test_rmf_robot_name.py -v
+    - pytest fleet_adapter/test/test_experimental_config.py -v
+    - pytest fleet_adapter/test/test_lift_commands.py -v
+    - pytest fleet_adapter/test/test_lift_guard.py -v
+    - pytest fleet_adapter/test/test_lift_navigation.py -v
+    - pytest fleet_adapter/test/test_mock_lift_adapter.py -v
+    - pytest fleet_adapter/test/test_LionsbotRobot.py -v
+    - pytest fleet_adapter/test/test_clean_finish.py -v
+    - pytest fleet_adapter/test/test_check_network.py -v
+    - pytest fleet_adapter/test/test_rmf_web.py -v
+    - pytest fleet_adapter/test/test_fault_status.py -v
+    - pytest fleet_adapter/test/test_building_3d.py -v
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_TAG
+
+# Ubuntu 22.04 ships Python 3.10 and the adapter image ships 3.12.
+.lb-rmf-setup:
+  stage: test
+  before_script:
+    - cd tools/lb_rmf_setup
+    - pip install --quiet --require-hashes -r requirements.txt
+    - pip install --quiet -r requirements-test.txt
+  script:
+    - ruff check .
+    - ruff format --check .
+    - pytest -q --cov=lbrmf --cov=lb_rmf_setup --cov-report=term-missing --cov-fail-under=85
+    - pip install --quiet --no-deps .
+    - lb-rmf-setup --version
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_TAG
+
+lb-rmf-setup-py310:
+  extends: .lb-rmf-setup
+  image: python:3.10-slim
+
+lb-rmf-setup-py312:
+  extends: .lb-rmf-setup
+  image: python:3.12-slim
+
+lb-rmf-setup-audit:
+  stage: test
+  image: python:3.12-slim
+  before_script:
+    - pip install --quiet pip-audit==2.10.1
+  script:
+    - cd tools/lb_rmf_setup
+    - pip-audit --require-hashes -r requirements.txt
+    - pip-audit -r requirements-test.txt
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
@@ -95,6 +150,11 @@ leak-guard:
         echo "       Use an environment variable reference (\$VAR) instead."
         fail=1
       fi
+
+      # 4. No internal ticket key in the publishable set. The check's own test
+      #    runs first, so a broken check cannot pass silently.
+      sh ci/test-check-internal-keys.sh || fail=1
+      sh ci/check-internal-keys.sh || fail=1
 
       if [ "$fail" -ne 0 ]; then
         echo ""

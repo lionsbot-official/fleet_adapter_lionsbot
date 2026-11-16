@@ -14,6 +14,7 @@
 
 import argparse
 import asyncio
+from datetime import timedelta
 import faulthandler
 import math
 import os
@@ -24,7 +25,6 @@ import time
 import traceback
 
 import numpy as np
-from fleet_adapter.LionsbotRobot import LionsbotRobot
 import rclpy
 from rclpy.duration import Duration
 import rclpy.node
@@ -44,13 +44,20 @@ from rmf_fleet_msgs.msg import LaneRequest
 from rmf_fleet_msgs.msg import ModeRequest
 from rmf_fleet_msgs.msg import RobotMode
 from rmf_fleet_msgs.msg import SpeedLimitRequest
+from rmf_lift_msgs.msg import LiftState
 import yaml
 
 from .utils.logging import configure_debug_file_logging
 from .utils.logging import install_ros_logger_file_mirror
+from .LiftGuard import LiftStateCache
+from .LionsbotRobot import LionsbotRobot
 from .RobotClientAPI import RobotAPI
+from .utils import rmf_web
 from .utils.Coordinate import LionsbotCoord
+from .utils.experimental_config import experimental_features_from_config
 from .utils.MapTransform import MapTransform
+from .utils.robot_config import rmf_robot_name
+from .utils.robot_config import rmf_robot_names_from_config
 from .utils.robot_config import robot_uuids_from_config
 
 def initialize_map_transform(
@@ -101,9 +108,11 @@ def make_fleet_configuration(
     update_frequencies = []
     max_delays = []
     robots = {}
+    rmf_robot_names = rmf_robot_names_from_config(config_yaml)
     for robot_name, robot_config in config_yaml['robots'].items():
         rmf_config = robot_config['rmf_config']
-        robots[robot_name] = {'charger': rmf_config['charger']['waypoint']}
+        robots[rmf_robot_names[robot_name]] = {
+            'charger': rmf_config['charger']['waypoint']}
         update_frequencies.append(
             rmf_config.get('robot_state_update_frequency', 1.0))
 
@@ -214,6 +223,8 @@ def start_add_fleet_robots_thread(
         api,
         robots,
         robots_lock,
+        lift_commands=False,
+        lift_states=None,
     ):
     # initialize_robot is retried until each robot is ready. Keep this state
     # outside it so a missing status does not defeat the log throttle.
@@ -306,9 +317,11 @@ def start_add_fleet_robots_thread(
         robot_map_names.setdefault(rmf_level, robot_map_name)
         robot_map_levels.setdefault(rmf_level, robot_map_level)
 
-        configuration = fleet_config.get_known_robot_configuration(robot_name)
+        configuration = fleet_config.get_known_robot_configuration(
+            rmf_robot_name(robot_name, robot_config))
         robot = LionsbotRobot(
             name=robot_name,
+            rmf_name=rmf_robot_name(robot_name, robot_config),
             fleet_name=fleet_name,
             config=robot_config,
             rmf_config=rmf_config,
@@ -322,6 +335,8 @@ def start_add_fleet_robots_thread(
             configuration=configuration,
             dock_paths=dock_paths,
             api=api,
+            lift_commands=lift_commands,
+            lift_states=lift_states,
         )
 
         localization_position = None
@@ -462,7 +477,7 @@ def start_add_fleet_robots_thread(
                     continue
 
                 update_handle = fleet_handle.add_robot(
-                    robot.name,
+                    robot.rmf_name,
                     robot.make_state(),
                     robot.configuration,
                     robot.make_callbacks(),
@@ -477,10 +492,11 @@ def start_add_fleet_robots_thread(
                 apply_robot_update_settings(robot)
 
                 with robots_lock:
-                    robots[robot_name] = robot
+                    robots[robot.rmf_name] = robot
 
                 node.get_logger().info(
-                    f'Successfully added new robot: {robot_name}')
+                    f'Successfully added new robot: {robot_name} '
+                    f'(RMF name: {robot.rmf_name})')
                 del missing_robots[robot_name]
     add_robots_thread = threading.Thread(target=add_fleet_robots, daemon=True)
     add_robots_thread.start()
@@ -541,7 +557,11 @@ def start_update_thread(
     update_thread = threading.Thread(target=update_loop, daemon=True)
     update_thread.start()
 
-def ros_connections(node, robots, robots_lock, fleet_handle):
+LIFT_STATES_TOPIC = 'lift_states'
+
+
+def ros_connections(
+        node, robots, robots_lock, fleet_handle, lift_states=None):
     fleet_name = fleet_handle.more().fleet_name
 
     transient_qos = QoSProfile(
@@ -696,12 +716,22 @@ def ros_connections(node, robots, robots_lock, fleet_handle):
         qos_profile=qos_profile_system_default,
     )
 
-    return [
+    subscriptions = [
         lane_request_sub,
         speed_limit_request_sub,
         action_execution_notice_sub,
         charger_request_sub,
     ]
+    if lift_states is not None:
+        # The adapter only reads the lift state. RMF and the site's lift
+        # adapter request the lift and hold its doors.
+        subscriptions.append(node.create_subscription(
+            LiftState,
+            LIFT_STATES_TOPIC,
+            lift_states.update,
+            qos_profile=qos_profile_system_default,
+        ))
+    return subscriptions
 
 def main(argv=sys.argv):
     faulthandler.enable()
@@ -741,6 +771,7 @@ def main(argv=sys.argv):
         config_yaml = yaml.safe_load(f)
 
     robot_uuids = robot_uuids_from_config(config_yaml)
+    experimental_features = experimental_features_from_config(config_yaml)
 
     with open(args.dock_summary_file, 'r') as f:
         dock_summary_yaml = yaml.safe_load(f)
@@ -759,10 +790,31 @@ def main(argv=sys.argv):
     node = rclpy.node.Node(f'{fleet_name}_command_handle')
     install_ros_logger_file_mirror(node)
     node.get_logger().info(f'Debug log file: {debug_log_path}')
+    node.get_logger().info(
+        'Experimental lift commands: '
+        f'{"on" if experimental_features.lift_commands else "off"}')
+    if not os.environ.get('RMF_WEB_ALERTS_URL'):
+        os.environ['RMF_WEB_ALERTS_URL'] = rmf_web.alerts_url(server_uri)
+    if server_uri.startswith('wss://'):
+        node.get_logger().error(
+            'RMF cannot use a wss:// SERVER_URI. It fails with "endpoint not '
+            'secure". Use ws://.')
+    if not rmf_web.reachable(server_uri):
+        node.get_logger().warning(
+            f'Cannot reach RMF Web at {server_uri}. RMF Web does not show '
+            'this fleet. Set SERVER_URI to the RMF Web API server.')
+    if not os.environ.get('RMF_WEB_API_TOKEN'):
+        node.get_logger().warning(
+            'RMF_WEB_API_TOKEN is not set. The adapter sends no alerts to '
+            f'{os.environ["RMF_WEB_ALERTS_URL"]}.')
 
     #  Initialize adapter
     try:
-        adapter = Adapter.make(f'{fleet_name}_fleet_adapter')
+        # Adapter.make() finds the schedule by its services, not its node name.
+        adapter = Adapter.make(
+            f'{fleet_name}_fleet_adapter',
+            wait_time=timedelta(
+                seconds=float(os.environ.get('SCHEDULE_TIMEOUT', '60'))))
     except Exception as error:
         node.get_logger().error(
             f'Exception while initializing fleet adapter: {error!r}')
@@ -775,7 +827,9 @@ def main(argv=sys.argv):
         node.get_logger().error(
             'Unable to initialize fleet adapter. '
             'Adapter.make() returned no adapter. '
-            'Please ensure RMF Schedule Node is running and reachable. '
+            'Start RMF, or use the ROS_DOMAIN_ID and RMW_IMPLEMENTATION '
+            'of the RMF that runs. Run launch/check_network.py to check '
+            'the network. '
             f'fleet_name={fleet_name!r}, '
             f'ROS_DOMAIN_ID={os.environ.get("ROS_DOMAIN_ID", "<unset>")!r}, '
             f'RMW_IMPLEMENTATION={os.environ.get("RMW_IMPLEMENTATION", "<default>")!r}')
@@ -811,6 +865,9 @@ def main(argv=sys.argv):
         robot_uuids=robot_uuids,
     )
 
+    lift_states = (
+        LiftStateCache() if experimental_features.lift_commands else None)
+
     robots = {}
     robots_lock = threading.Lock()
     start_add_fleet_robots_thread(
@@ -825,6 +882,8 @@ def main(argv=sys.argv):
         api,
         robots,
         robots_lock,
+        lift_commands=experimental_features.lift_commands,
+        lift_states=lift_states,
     )
 
     reassign_task_interval = config_yaml['rmf_fleet'].get(
@@ -838,7 +897,7 @@ def main(argv=sys.argv):
         update_period,
         reassign_task_interval)
     
-    ros_connections(node, robots, robots_lock, fleet_handle)
+    ros_connections(node, robots, robots_lock, fleet_handle, lift_states)
 
     rclpy_executor = rclpy.executors.SingleThreadedExecutor()
     rclpy_executor.add_node(node)

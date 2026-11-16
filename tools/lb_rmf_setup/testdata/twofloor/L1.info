@@ -1,0 +1,47 @@
+{
+ "custom_paths": [],
+ "lift_lobbies": [
+  {
+   "angle": 0,
+   "coords": "200 240",
+   "id": "lobby-1",
+   "lifts": [
+    {
+     "angle": -1.5707963267948966,
+     "carriage_width": 1.6,
+     "coords": "200 260",
+     "door_width": 0.9,
+     "id": "1",
+     "name": "lift_a"
+    }
+   ],
+   "name": "lobby_1",
+   "vendor_id": "vendor-1"
+  }
+ ],
+ "markers": {
+  "dock": [],
+  "loc_point": [
+   {
+    "angle": 0,
+    "coords": "200 300",
+    "name": "lift_a"
+   },
+   {
+    "angle": 0,
+    "coords": "200 280",
+    "name": "lift_a_door"
+   }
+  ]
+ },
+ "meta_data": {
+  "height": 400,
+  "ox": 0,
+  "oy": 0,
+  "resolution": 0.05,
+  "width": 400
+ },
+ "zones": {
+  "clean": []
+ }
+}

@@ -1,0 +1,13 @@
+coordinate_system: reference_image
+graphs:
+  {}
+levels:
+  L1:
+    drawing:
+      filename: floor1.png
+    elevation: 0
+    lanes: []
+    measurements: []
+    vertices: []
+lifts: {}
+name: empty_level

@@ -1,0 +1,40 @@
+map_transform:
+  L1:
+    transform_values: {rotation_degrees: 0, scale: 0.05, tx_meters: 0, ty_meters: 0}
+  L3:
+    transform_values: {rotation_degrees: 0, scale: 0.05, tx_meters: 0, ty_meters: 0}
+rmf_fleet:
+  name: lb_fleet
+  limits:
+    linear: [0.5, 0.3]
+    angular: [0.6, 0.6]
+  profile: {footprint: 0.3, vicinity: 0.4}
+  mechanical_system: {mass: 80.0, moment_of_inertia: 20.0, friction_coefficient: 0.2}
+  battery_system: {voltage: 24.0, capacity: 40.0, charging_current: 26.4}
+  ambient_system: {power: 20.0}
+  tool_system: {power: 760.0}
+  account_for_battery_drain: false
+  reversible: false
+  recharge_threshold: 0.3
+  recharge_soc: 1.0
+  task_capabilities: {clean: false, delivery: false, loop: false, finishing_request: nothing}
+  publish_fleet_state: true
+  fleet_manager: {prefix: '127.0.0.1:9', user: nobody, password: nothing}
+experimental:
+  lift_commands: true
+robots:
+  R3VAC-B00000:
+    robot_config:
+      uuid: 00000000-0000-0000-0000-000000000000
+      max_delay: 15.0
+      navigation: {max_retries: 5, timeout_grace_sec: 60, max_timeout_sec: 120, xy_goal_tolerance: 20}
+    rmf_config:
+      charger: {waypoint: start_L1}
+      robot_state_update_frequency: 10
+      start:
+        localization_starting_point: {x: 0.0, y: 0.0, heading: 0.0}
+        rmf_level: L1
+        robot_map_name: rmf1
+        robot_map_level: L1
+      robot_maps:
+        L3: {name: rmf3, level: L3}

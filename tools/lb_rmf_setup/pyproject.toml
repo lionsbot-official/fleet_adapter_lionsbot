@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lb-rmf-setup"
+dynamic = ["version"]
+description = "Make the Open-RMF map files for LionsBot robots from the LionsBot API"
+requires-python = ">=3.10"
+license = "Apache-2.0"
+dependencies = ["PyYAML>=6.0"]
+
+[project.scripts]
+lb-rmf-setup = "lb_rmf_setup:console_main"
+
+[tool.setuptools]
+py-modules = ["lb_rmf_setup"]
+packages = ["lbrmf"]
+
+[tool.setuptools.dynamic]
+version = { attr = "lbrmf.__version__" }
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "--strict-markers"
+
+[tool.coverage.report]
+exclude_also = ['if __name__ == "__main__":']
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "RUF", "SIM"]

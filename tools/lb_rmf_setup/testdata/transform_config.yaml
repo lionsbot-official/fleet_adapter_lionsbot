@@ -1,0 +1,17 @@
+map_transform:
+  L3:
+    transform_values:
+      tx_meters: 38.917
+      ty_meters: 33.043
+      rotation_degrees: -82.791
+      scale: 0.0538562
+  L5:
+    transform_values:
+      tx_meters: 44.017
+      ty_meters: 27.210
+      rotation_degrees: 174.829
+      scale: 0.0504638
+    level_transform:
+      scale: 0.0604
+      tx_pixels: 1002.4
+      ty_pixels: 26.2

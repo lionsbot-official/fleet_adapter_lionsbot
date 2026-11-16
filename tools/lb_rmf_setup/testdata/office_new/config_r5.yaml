@@ -1,0 +1,68 @@
+map_transform:
+  L8:
+    transform_values:
+      rotation_degrees: 0
+      scale: 0.0514
+      tx_meters: 0
+      ty_meters: 0
+rmf_fleet:
+  account_for_battery_drain: true
+  ambient_system:
+    power: 20.0
+  battery_system:
+    capacity: 40.0
+    charging_current: 26.4
+    voltage: 24.0
+
+  fleet_manager:
+    password: $LIONSBOT_PASSWORD
+    prefix: api.lionsbot.io
+    user: $LIONSBOT_USER
+  
+  limits:
+    angular: 
+    - 0.1
+    - 0.1
+    linear: 
+    - 0.2
+    - 0.03
+  mechanical_system:
+    friction_coefficient: 0.2
+    mass: 80.0
+    moment_of_inertia: 20.0
+  name: r5
+  profile:
+    footprint: 0.5
+    vicinity: 0.6
+  publish_fleet_state: true
+  recharge_soc: 1
+  recharge_threshold: 0.3
+  reversible: false
+  task_capabilities:
+    clean: true
+    delivery: false
+    finishing_request: charge
+    loop: false
+  tool_system:
+    power: 760.0
+robots:
+  R5SCR-DV30019:
+    rmf_config:
+      charger:
+        waypoint: charging_1
+      robot_state_update_frequency: 10
+      start:
+        localization_starting_point:
+          heading: 3.141592653589793
+          x: 565
+          y: 694
+        rmf_level: L8
+        robot_map_name: rmf_office_new
+    robot_config:
+      max_delay: 15.0
+      navigation:
+        max_retries: 5
+        timeout_grace_sec: 60
+        max_timeout_sec: 120
+        xy_goal_tolerance: 20
+      uuid: fcbfb6c2-2275-4045-9dd6-f374a32c912e

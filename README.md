@@ -1,365 +1,472 @@
 # LionsBot Open-RMF Fleet Adapter
 <img src="docs/images/lionsbot-banner.png" alt="LionsBot Banner">
 
-This repository connects LionsBot robots to [Open-RMF](https://www.open-rmf.org/). It includes site maps, per-fleet configuration, an RMF launch stack, and the Python adapter that communicates with the LionsBot API.
+This repository connects LionsBot robots to [Open-RMF](https://www.open-rmf.org/). It has a setup tool that turns a LionsBot robot map into an RMF map, an RMF launch stack, and the fleet adapter that talks to the LionsBot API.
 
-Tested with:
+| Ubuntu | ROS | Robots |
+| --- | --- | --- |
+| 24.04 | ROS 2 Jazzy | R3 (Vac, Scrub Pro), R5. REX: testing in progress |
 
-| Ubuntu version | ROS version |
+> **Upgrading from v1.x?** LeoScrub robots are no longer supported as of v2.0.0, and the `fleet_adapter_r3` and `fleet_adapter_leoscrub` packages are replaced by one `fleet_adapter` package. Deployments with LeoScrub fleets should stay on [v1.1.2](https://github.com/lionsbot-official/fleet_adapter_lionsbot/releases/tag/v1.1.2).
+
+## Contents
+
+1. [Before you start](#1-before-you-start)
+2. [Set up a site with one level](#2-set-up-a-site-with-one-level)
+3. [Add more levels and lifts](#3-add-more-levels-and-lifts)
+4. [Join an RMF that someone else runs](#4-join-an-rmf-that-someone-else-runs)
+5. [Reference](#5-reference)
+6. [FAQ and troubleshooting](#6-faq-and-troubleshooting)
+7. [Future improvements](#7-future-improvements)
+
+Follow sections 1 and 2 in order. Do section 3 only for a robot that works on more than one level.
+
+## 1. Before you start
+
+You need:
+
+- A LionsBot account (email and password) that can see your robot, and the API address of your region, for example `https://api.lionsbot.io`.
+- The robot online in the LionsBot cloud, with a robot map that already has its dock, named points and cleaning zones. You make these on the robot with the LionsBot tools, not here.
+- Ubuntu 24.04 with internet access to the LionsBot API.
+
+Install the software once:
+
+1. ROS 2 Jazzy: follow the [ROS 2 Jazzy installation guide](https://docs.ros.org/en/jazzy/Installation.html).
+2. Open-RMF, traffic editor and Cyclone DDS:
+
+   ```bash
+   sudo apt install ros-jazzy-rmf-dev ros-jazzy-rmw-cyclonedds-cpp python3-pip
+   sudo rosdep init
+   rosdep update
+   python3 -m pip install --break-system-packages nudged==0.3.1
+   ```
+
+   `sudo rosdep init` fails when it was run before. That is fine.
+3. [Docker Engine](https://docs.docker.com/engine/install/ubuntu/), not Docker Desktop. RMF Web runs in Docker with host networking.
+4. This repository and your credentials:
+
+   ```bash
+   git clone https://github.com/lionsbot-official/fleet_adapter_lionsbot.git
+   cd fleet_adapter_lionsbot
+   cp fleet_adapter/.env.example fleet_adapter/.env
+   ```
+
+   In `fleet_adapter/.env`, set `LIONSBOT_USER`, `LIONSBOT_PASSWORD` and `LIONSBOT_API_BASE_URL`.
+5. Check the login. Run every command in this guide from the repository folder.
+
+   ```bash
+   python3 tools/lb_rmf_setup/lb_rmf_setup.py --env-file fleet_adapter/.env auth check
+   ```
+
+   It prints your login. If it fails, see [Setup tool errors](#setup-tool-errors).
+
+## 2. Set up a site with one level
+
+### Words
+
+| Word | What it is |
 | --- | --- |
-| 24.04 | ROS 2 Jazzy |
+| Robot map | The map that the robot made and drives on. It lives in the LionsBot cloud with its docks, named points and cleaning zones. |
+| Building file | `fleet_adapter/maps/<building>/rmf_<building>.building.yaml`. The RMF map. You draw it in traffic editor on top of a floor plan image. It holds the levels, walls and lanes. |
+| Nav graph | `fleet_adapter/maps/<building>/0.yaml`. The lanes of the building file, in metres. `run_fleet.sh` makes it each time it starts. |
+| Fleet config | `fleet_adapter/configs/<building>/config_<type>.yaml`. The robots of one fleet and their settings, including `map_transform`, which lines up the robot map with the building file. |
+| Approach point | The named point that the robot map keeps in front of a dock, facing it. The robot drives from it onto the dock. |
 
-Currently, fleet adapters are developed and have been tested for these supported families of robots:
+In the commands, replace:
 
-| Robot family | Robot type |
-| --- | --- |
-| R3 | Vac, Scrub Pro |
-| R5 | R5 |
-| REX | Testing in progress |
+- `<building>`: a folder name for your site, for example `pdd_office`
+- `<robot>`: the robot serial, for example `R3VAC-B00218`
+- `<level>`: the RMF name of the floor, for example `L8`
+- `<robot_map>` and `<robot_map_level>`: the name and level of the robot map, from `maps list`
 
-> **Upgrading from v1.x?** LeoScrub robots are no longer supported as of v2.0.0,
-> and the `fleet_adapter_r3` and `fleet_adapter_leoscrub` packages have been
-> replaced by a single `fleet_adapter` package. v2.0.0 also requires ROS 2 Jazzy
-> on Ubuntu 24.04. Deployments running LeoScrub fleets should remain on
-> [v1.1.2](https://github.com/lionsbot-official/fleet_adapter_lionsbot/releases/tag/v1.1.2).
+To keep the commands short, set these in your terminal. In a new terminal, set them again, and `CONFIG` from step 2 too.
 
-## Table of contents
+```bash
+S="python3 tools/lb_rmf_setup/lb_rmf_setup.py --env-file fleet_adapter/.env"
+BUILDING=fleet_adapter/maps/<building>/rmf_<building>.building.yaml
+```
 
-- [Quick start](#quick-start)
-- [Repository guide](#repository-guide)
-- [Maps and visualisation](#maps-and-visualisation)
-- [Development](#development)
-- [RMF map creation workflow](#rmf-map-creation-workflow)
-- [FAQ and troubleshooting](#faq-and-troubleshooting)
-- [Installation and references](#installation-and-references)
-- [Future improvements](#future-improvements)
+### Steps
 
-## Quick start
+1. **Find the robot and its map.**
 
-The runnable ROS package is [`fleet_adapter/`](fleet_adapter/). Local startup is split into two scripts: [`run_fleet.sh`](fleet_adapter/run_fleet.sh) builds the package and starts RMF core, RViz, and RMF Web; [`run_fleet_adapter.sh`](fleet_adapter/run_fleet_adapter.sh) starts one selected fleet adapter.
+   ```bash
+   $S robots list | grep <robot>
+   $S maps list --robot <robot>
+   ```
 
-1. Install ROS 2 Jazzy, Open-RMF dependencies, Docker Compose, and `rosdep`. If these are not installed yet, see [Installation and references](#installation-and-references) below.
-2. Create the local environment file and enter LionsBot credentials:
+   `robots list` shows every robot your account can see, so `grep` finds yours. Note the name and level of the robot map for this floor. If you are not sure which map the robot uses, leave out `--map-name` and `--map-level` in step 2: `init` then takes the map that the robot uses now.
+
+2. **Write the fleet config.**
+
+   ```bash
+   $S init --robot <robot> --building <building> \
+     --map-name <robot_map> --map-level <robot_map_level> --level <level>
+   ```
+
+   Its first `wrote` line is the path of the config. Keep that path:
+
+   ```bash
+   CONFIG=<path of the config>
+   ```
+
+   `init` also makes the folder `fleet_adapter/maps/<building>/` and sets `FOLDER_NAME`, `FLEET_1_CONFIG`, `FLEET_1_NAV_GRAPH` and `RMF_FLOOR_NAME` in `.env`. The map transform and the charger stay as placeholders. Step 5 fills them in. Add `--dry-run` to see the result without writing.
+
+3. **Download the robot map image.** It is the floor plan in traffic editor.
+
+   ```bash
+   $S maps fetch --robot <robot> --map-name <robot_map> --map-level <robot_map_level> \
+     --out fleet_adapter/maps/<building>/
+   ```
+
+   It writes `<robot_map>.png`, `<robot_map>.yaml` and `<robot_map>.geometry.json`.
+
+4. **Draw the building file in traffic editor.**
+
+   ```bash
+   source /opt/ros/jazzy/setup.bash
+   traffic-editor
+   ```
+
+   The toolbar buttons show their names when you point at them, for example **Add Wall (W)**.
+
+   1. **Building, New...**. In the file dialog, go to `fleet_adapter/maps/<building>/` and save as `rmf_<building>.building.yaml`. In the next dialog, keep the name and choose **Reference-image coordinates**.
+
+      <img src="docs/images/image%20(0).png" alt="New building" width="350">
+
+   2. In the **levels** tab on the right, select **Add...**. Set `name` to `<level>`, `elevation` to `0`, and `drawing` to `<robot_map>.png`. Type the file name only: the image is in the same folder as the building file. The setup tool knows from this name that the floor plan is the robot map. (The screenshot shows another site.)
+
+      <img src="docs/images/image%20(1).png" alt="Level dialog" width="350">
+
+   3. With **Add Measurement (T)**, click two points far apart, for example the two ends of a long wall. With **Select (Esc)**, click the measurement. The Properties panel shows **length (m)**. Type that number in **distance** when `resolution` in `<robot_map>.yaml` is `0.05`, because traffic editor starts a level at 0.05 m per pixel. For another resolution, type length (m) × resolution / 0.05, or the real length when you know it. **Building, Save**, close traffic editor and open it again (**Building, Open...**). The level now has its scale.
+
+      <img src="docs/images/image%20(3).png" alt="Measurement" width="350">
+
+   4. With **Add Wall (W)**, draw at least one wall. RMF Web needs it to show the map.
+
+      <img src="docs/images/image%20(5).png" alt="Wall, measurement and the levels tab" width="700">
+
+   5. **Building, Save**. Do not draw the docks or named points. Step 5 adds them.
+
+5. **Add the robot map points.** First look, then write:
+
+   ```bash
+   $S export --building $BUILDING --config $CONFIG --level <level> --dry-run
+   $S export --building $BUILDING --config $CONFIG --level <level>
+   ```
+
+   It adds each dock, named point and cleaning zone start of the robot map to the building file, draws the lane from each approach point to its dock, writes the cleaning paths to `dock_summary.yaml`, and fills in `charger.waypoint` and `map_transform` in the config. It prints `map transform: <level> from the measurements of <level>, whose floor plan is the robot map`. Run it again after any change to the robot map. A second run changes only what changed.
+
+6. **Draw the lanes in traffic editor.** Open the building file again. With **Add Lane (L)**, join the approach points, the named points and the cleaning zone starts into the routes that the robot may drive. Start and end each lane exactly on a vertex: a click next to a vertex makes a new vertex, and the lane then misses the point. Keep vertices a little away from walls. Do not draw another lane to a dock. Save.
+
+   <img src="docs/images/image%20(10).png" alt="Lanes" width="350"> <img src="docs/images/image%20(11).png" alt="Lanes" width="350"> <img src="docs/images/image%20(12).png" alt="Lanes" width="350">
+
+7. **Check the building file and the config.**
+
+   ```bash
+   $S check --building $BUILDING --config $CONFIG
+   ```
+
+   It names each lane that misses a vertex, each named point with no lane, each stray vertex, each name used on more than one level, and a robot without a charger. Fix them in traffic editor and run it again until it prints `no problems found`.
+
+8. **Set where the robot starts.** When the robot is not localized when the adapter starts, the adapter **undocks the robot** and localizes it at `rmf_config.start.localization_starting_point` in the config. `init` leaves it at `0, 0, 0`. Set it to a point on the robot map: `x` and `y` in pixels of the robot map image and `heading` in radians, the same numbers as the points in `<robot_map>.geometry.json`. For example, copy `x`, `y` and `angle` of the point that `export` named in `dock: <dock> is reached from <point>`.
+
+9. **Start RMF.** In one terminal:
 
    ```bash
    cd fleet_adapter
-   cp .env.example .env
-   ```
-
-> The example configuration defines two fleet adapters for different robot types (a heterogeneous fleet). Start each desired adapter separately with `./run_fleet_adapter.sh <fleet_number>`.
-
-3. In `.env`, select the site and the two fleet configurations:
-
-   ```dotenv
-   FOLDER_NAME=office_new
-   FLEET_1_CONFIG=config_r5.yaml
-   FLEET_1_NAV_GRAPH=0.yaml
-   FLEET_2_CONFIG=config_r3scp.yaml
-   FLEET_2_NAV_GRAPH=1.yaml
-   ```
-
-   `FOLDER_NAME` must be the name of a matching directory in both [`maps/`](fleet_adapter/maps/) and [`configs/`](fleet_adapter/configs/). For example, `office_new` selects `maps/office_new/` and `configs/office_new/`.
-
-4. In one terminal, build and start RMF core, RViz, and RMF Web:
-
-   ```bash
    ./run_fleet.sh
    ```
 
-   The script loads `.env`, runs `rosdep`, builds with `colcon`, launches RMF core and RViz, and starts RMF Web.
+   It builds the package, checks the network, makes the nav graph, runs `check` again, then starts RMF, RViz and RMF Web. It can ask for your `sudo` password, for `rosdep` and for Docker. Keep it running.
 
-5. In a separate terminal, choose one way to start an adapter. The [Docker setup](fleet_adapter/docker/) packages the adapter only; keep `run_fleet.sh` running to provide RMF core and RMF Web.
+   RViz shows the whole building in 3D. Every level is at its elevation, with its floor plan, walls, lanes and name. Each lift has a shaft and a car. The car moves to the floor that the lift reports and is green with open doors, red with closed doors. Each robot is on its level with a heading arrow, its name, a trail of where it was, and a colour for what it does (grey idle, blue moving or on a task, green cleaning, purple docking, yellow charging, red error). Planned paths are drawn for the level in `RMF_FLOOR_NAME`.
 
-   **Option 1 — run directly:** start an adapter by fleet number:
+10. **Start the adapter.** In a second terminal:
+
+    ```bash
+    cd fleet_adapter
+    ./run_fleet_adapter.sh 1
+    ```
+
+    The `1` selects `FLEET_1_CONFIG` and `FLEET_1_NAV_GRAPH` in `.env`. The adapter is ready when its log shows `Successfully added new robot`.
+
+11. **Send a task.** Open RMF Web at http://localhost:3000. To clean, select **New Task**, then the task **Clean**, and pick a **Cleaning Zone**.
+
+To stop, press `Ctrl+C` in each terminal. After any change to the building file, stop and start `run_fleet.sh` and the adapter. RMF and RMF Web read the map only when they start.
+
+## 3. Add more levels and lifts
+
+RMF needs one building file with all levels, and one fleet config with the robot map of each level. The robot starts on the level of section 2. Each other level is added next to it.
+
+### Before you start
+
+On the LionsBot side, each level has its own robot map. For a lift:
+
+- Each robot map of a level that the lift serves has the lift, with the same lift name on every level.
+- The robot map of each level has a point with the name of the lift, inside the car: the cabin point.
+- Any other point name must not repeat on another level. RMF refuses a nav graph with a repeated waypoint name (`Duplicated waypoint name`). Rename the points on the robot map, for example `l7_dock` on level 7. Lift and lobby points are the exception: the setup tool does not export them as waypoints.
+- LionsBot must enable lift commands on the robot.
+
+### Steps
+
+Do these for each extra level, here `<level2>` with robot map `<robot_map2>` and level `<robot_map2_level>`.
+
+1. **Download the robot map image** of the level, as in section 2 step 3.
+
+2. **Add the level in traffic editor.** In the **levels** tab, select **Add...**. Set `name` to `<level2>`, `elevation` to its height in metres above the first level (negative for a lower floor), and `drawing` to `<robot_map2>.png` (file name only). RMF uses the elevation to order the floors of a lift, so a rough value in the right order is enough. Draw a measurement and a wall on it, as in section 2 step 4.
+
+3. **Add fiducials.** On every level, with **Add Level Alignemnt Fiducial** (spelled so in traffic editor), add two fiducials at the same real places, for example two corners of the lift shaft. With **Select (Esc)**, click each one and type its `name` in the Properties panel. Use the same two names on every level. RMF uses them to line up the levels. Without them, the nav graph of every level except the first is in pixels, not metres. Save.
+
+4. **Add the level to the config.** In `$CONFIG`, add two entries. Do not add a second `map_transform:` or `robot_maps:` key: put the new lines under the one that is there.
+
+   Under `map_transform:` at the top, the level with a placeholder scale:
+
+   ```yaml
+   map_transform:
+     <level>:
+       ...
+     <level2>:
+       transform_values:
+         rotation_degrees: 0.0
+         scale: <metres_per_pixel>
+         tx_meters: 0.0
+         ty_meters: 0.0
+   ```
+
+   Under `rmf_config:` of the robot, next to `start:`, the robot map of the level. The config already has these lines as a comment after `start:` (`# robot_maps:`). Delete the `# ` at the start of the four lines and fill them in:
+
+   ```yaml
+   robots:
+     <robot>:
+       ...
+       rmf_config:
+         ...
+         start:
+           ...
+         robot_maps:
+           <level2>:
+             name: <robot_map2>
+             level: <robot_map2_level>
+   ```
+
+   Without the first, `export` stops with `the config has no map_transform.<level2>.transform_values`. Without the second, it stops with `no robot in the config is on <level2>`.
+
+5. **Add the points of the level:**
+
+   ```bash
+   $S export --building $BUILDING --config $CONFIG --level <level2>
+   ```
+
+   Besides the points and the map transform, it writes `level_transform` for the level from the fiducials and prints `level transform: <level2> from 2 fiducials shared with the reference level <level>`. The reference level is the first level in the building file. `export` stops when the levels share fewer than 2 fiducial names, or when the fiducials turn the floor plan against the reference level, and says what to fix.
+
+When every level is in, add the lifts and finish:
+
+6. **Add the lifts.** Give every level that a lift serves:
+
+   ```bash
+   $S lifts export --building $BUILDING --config $CONFIG --level <level> --level <level2> \
+     --lift-cabins --lift-approach --dry-run
+   $S lifts export --building $BUILDING --config $CONFIG --level <level> --level <level2> \
+     --lift-cabins --lift-approach
+   ```
+
+   It writes the `lifts:` block, and on each level a cabin vertex `<lift>_<level>_cabin` inside the car, an approach vertex `<lift>_<level>_approach` in front of the door, and a lane between them. It takes the car depth from a point `<lift>_door` on the robot map when there is one, otherwise from the car width, and says so. It stops and writes nothing when a lift has no cabin point on a level, when the cabin points of one lift are more than 0.1 m apart across levels, when another vertex is inside a car, or when a lift has no width.
+
+7. **Draw the lanes** on every level, as in section 2 step 6. Join each `<lift>_<level>_approach` vertex to the routes. Then run `check` as in section 2 step 7.
+
+8. **Turn on lift commands.** In `$CONFIG`, change `lift_commands: false` under `experimental:` to `lift_commands: true`.
+
+   With `false`, the adapter never moves the robot into or out of a lift car. It fails that move and, outside the car, RMF cancels the task.
+
+9. **Start RMF and the adapter** as in section 2 steps 9 and 10. A lift trip also needs a lift adapter (see [below](#a-lift-trip-needs-a-lift-adapter)). With no real lift, set `MOCK_LIFTS=true` in `.env` before you start `run_fleet.sh`.
+
+10. **Send the robot to the other level.** In a third terminal, from the repository folder:
+
+    ```bash
+    source /opt/ros/jazzy/setup.bash
+    set -a; source fleet_adapter/.env; set +a
+    ros2 topic pub --once --qos-durability transient_local --qos-reliability reliable \
+      /task_api_requests rmf_task_msgs/msg/ApiRequest \
+      "{request_id: lift_test_1, json_msg: '{\"type\": \"dispatch_task_request\", \"request\": {\"category\": \"patrol\", \"description\": {\"places\": [\"<waypoint>\"], \"rounds\": 1}}}'}"
+    ```
+
+    `<waypoint>` is a named point on the other level. Use a new `request_id` for each task.
+
+### A lift trip needs a lift adapter
+
+RMF moves the lift through a lift adapter of the site. The fleet adapter never calls the lift. It only moves the robot. What RMF needs:
+
+- The RMF `lift_supervisor` node. It passes the lift requests of a fleet adapter (`adapter_lift_requests`) on to the lift adapter (`lift_requests`). `run_fleet.sh` starts it. On an RMF that someone else runs, `ros2 node list` must show `/rmf_lift_supervisor`.
+- A lift adapter that reads `lift_requests` and publishes `lift_states` for each lift, at least one time in 10 seconds. `current_floor` is the RMF level name. `session_id` is the session of the request that holds the lift. For a robot it is `<fleet name>/<RMF robot name>`, for example `lb_fleet/R3VAC_B00218`. While the lift waits for the robot, `door_state` is `2` (open) and `motion_state` is `0` (stopped).
+- The same lift name in the building file, in the lift adapter and on the robot map of each level.
+
+**No real lift?** In `.env`, set `MOCK_LIFTS=true` before you start `run_fleet.sh`. It then starts a mock lift adapter that moves no real lift: it reads the lifts from the building file, answers the lift requests of RMF, "moves" for 3 seconds with closed doors, then reports open doors. Its output shows `This is a mock lift adapter`, and one `MOCK lift` line for each change. Watch it with `ros2 topic echo /lift_states`. Use it only where no real lift adapter runs. The robot is real: keep the lift point clear, because the robot drives in when the mock reports open doors.
+
+To check the whole chain on one machine with no robot, run `tools/lift_e2e/run.sh`. It starts RMF with the mock lift adapter on `ROS_DOMAIN_ID` 58 and the adapter with a fake robot, sends the robot to another level and back, and checks each step.
+
+## 4. Join an RMF that someone else runs
+
+Use this when the site already runs its own RMF core and RMF Web. Do not run `run_fleet.sh` there. It starts a second RMF core.
+
+1. Ask the site for its building file and level names, and put the file in `fleet_adapter/maps/<building>/`. Do sections 1 and 2 up to step 8 on it, but skip drawing the level (section 2 step 4): add your robot map image to each level as a layer, as in [Another floor plan than the robot map](#another-floor-plan-than-the-robot-map), so `export` places the points in the frame of the site.
+2. Build the adapter and make the nav graph:
 
    ```bash
    cd fleet_adapter
-   ./run_fleet_adapter.sh 1
+   source /opt/ros/jazzy/setup.bash
+   rosdep install --from-paths . --ignore-src -r -y
+   colcon build --symlink-install
+   ros2 run rmf_building_map_tools building_map_generator nav \
+     maps/<building>/rmf_<building>.building.yaml maps/<building>/
    ```
 
-   Use `./run_fleet_adapter.sh 2` for the second fleet. The number selects the matching `FLEET_<number>_CONFIG` and `FLEET_<number>_NAV_GRAPH` entries in `.env`, so each adapter can be run, stopped, and debugged independently.
+3. In `.env`, set `ROS_DOMAIN_ID` and `RMW_IMPLEMENTATION` to the values of the site, and `SERVER_URI=ws://<host>:<port>/_internal` to the RMF Web API server of the site. It must listen on an address that your machine can reach. Give `rmf_fleet.name` in the config a name that no other fleet on the site uses.
+4. Make sure the robot is localized, then run `./run_fleet_adapter.sh 1`. The adapter has joined the RMF of the site when its log shows `Mirror handling new sync`.
 
-   **Option 2 — run with Docker Compose:** build the image, then start the adapter. This example starts fleet 1; replace the environment-variable references with fleet 2's values to start fleet 2.
+## 5. Reference
 
-   ```bash
-   cd fleet_adapter
-   FLEET_CONFIG="$FLEET_1_CONFIG" NAV_GRAPH="$FLEET_1_NAV_GRAPH" \
-     docker compose -f docker/docker-compose.yaml build
-   FLEET_CONFIG="$FLEET_1_CONFIG" NAV_GRAPH="$FLEET_1_NAV_GRAPH" \
-     docker compose -f docker/docker-compose.yaml up
-   ```
+### What the adapter does at a lift
 
-Local ROS logs are written below [`fleet_adapter/log/`](fleet_adapter/log/). Use `Ctrl+C` in the `run_fleet.sh` terminal to stop RMF launch processes and RMF Web containers, and separately in each adapter terminal to stop that adapter.
+One trip from level A to level B, with `lift_commands: true`:
 
-## Repository guide
+| Step | RMF | Adapter |
+| --- | --- | --- |
+| 1 | Moves the robot to the approach vertex on level A. | Sends a point-to-point move. |
+| 2 | Requests the lift to level A and waits for the car and the open doors. | Does nothing. |
+| 3 | Moves the robot to the cabin vertex. | Checks the lift state, then sends `lift_enter_start`. |
+| 4 | Requests the lift to level B. | Does nothing. |
+| 5 | Asks for the robot position on level B. | Changes the robot map to level B and sets the robot pose at the cabin vertex. |
+| 6 | Moves the robot to the approach vertex on level B. | Checks the lift state, then sends `lift_exit_start`. |
+| 7 | Ends the lift session. | Does nothing. |
+
+Safety rules:
+
+- It sends a lift command only when the latest lift state, not older than 10 seconds, shows the car at the level of the robot, open doors, a stopped car, and the session of this robot. It waits 10 seconds for this state.
+- During a lift move, it stops the robot when the car moves or when the lift session changes.
+- It does not stop a lift move when RMF cancels the task, so the robot does not stay in the doorway.
+- It stops the robot when the robot sends no result in 6 minutes.
+- A robot in a lift car leaves it only with `lift_exit_start`.
+
+When a lift move fails, the adapter never tells RMF that the robot arrived, so RMF does not move the car. When the robot did not move, the adapter asks RMF for a new plan, up to `navigation.max_retries` failures in a row. After that, or when the robot moved, the robot stays where it is and the reason goes to the adapter log and the RMF task log. Check the robot and the lift, then cancel or restart the task.
+
+When lift commands are not enabled on the robot, the command fails after 15 seconds with reason code `RCSE00006` (`RCSE00005` for a robot model without lift commands). The adapter cancels the task, so RMF releases the lift, and sends that robot no more lift commands until the adapter starts again. The robot can still work on its current level.
+
+The adapter stops at start when `experimental` is not a mapping, has an unknown key, or `lift_commands` is not `true` or `false`.
+
+### Robot faults
+
+When a robot reports `Estop`, `Error` or `Offline`, the adapter opens an RMF issue on the robot and sends one RMF Web alert. A clean or dock action in progress is marked blocked, or delayed for `Offline`. `Offline` counts only after it lasts `navigation.timeout_grace_sec`. When the state ends, the issue is resolved. The adapter sends the robot no command because of these states.
+
+### Settings in `.env`
+
+| Setting | Use |
+| --- | --- |
+| `LIONSBOT_USER`, `LIONSBOT_PASSWORD`, `LIONSBOT_API_BASE_URL` | LionsBot login and API address. |
+| `FOLDER_NAME` | The site folder under `maps/` and `configs/`. Set by `init`. |
+| `FLEET_<n>_CONFIG`, `FLEET_<n>_NAV_GRAPH` | Config file and nav graph of fleet `<n>`, started with `./run_fleet_adapter.sh <n>`. Set by `init` (`--fleet-number` for another fleet). Remove the lines of a fleet that you do not have. |
+| `RMF_MAP_NAME` | Only when the building file is not `rmf_<FOLDER_NAME>.building.yaml`. |
+| `RMF_FLOOR_NAME` | The level that RViz shows first. Set by `init`. |
+| `MOCK_LIFTS` | `true` starts the mock lift adapter. |
+| `ROS_DOMAIN_ID`, `RMW_IMPLEMENTATION` | Must be the same for RMF and every adapter. Default `0` and `rmw_cyclonedds_cpp`. The RMF Web of `run_fleet.sh` always uses domain `0`. |
+| `CYCLONEDDS_URI` | Optional Cyclone DDS config, for example to pick a network card. |
+| `SERVER_URI` | The RMF Web API server, `ws://<host>:<port>/_internal`. `wss://` does not work with the RMF client in ROS 2 Jazzy. |
+| `SCHEDULE_TIMEOUT` | Seconds the adapter waits for the RMF traffic schedule. Default 60. |
+| `RMF_WEB_API_TOKEN`, `RMF_WEB_ALERTS_URL` | Optional. Without the token, the adapter sends no alerts to RMF Web. The URL defaults to the server of `SERVER_URI`. |
+
+### Setup tool
+
+Every command takes `--help`. Put `--json` (one JSON result, also on failure) or `--verbose` (each API call, no secrets) before the command, for example `$S --verbose maps list --robot <robot>`. `export` and `lifts export` take `--dry-run` (print the diff, write nothing) and `--check` (exit 10 when the files would change). `maps fetch` never replaces a file without `--overwrite`. `export --from-geometry <file>` works from a `.geometry.json` file that `maps fetch` wrote, with no network.
+
+Rules of `export`: a vertex is matched by its name. A new name is added at the end. No vertex is deleted or reordered, so your lanes stay. An existing vertex keeps its position (`--update-positions` moves it). When a dock has no approach point on the robot map, `export` adds `<dock>_approach` 0.7 m in front of it. Values that you set by hand in the config never change.
+
+#### Setup tool errors
+
+| Exit code | Meaning |
+| --- | --- |
+| 0 | Success |
+| 2 | Wrong command line |
+| 3 | A local file or variable is missing or wrong |
+| 4 | Login refused: check the email, password and API address |
+| 5 | No access to the robot or map |
+| 6 | API or network error. `429` means too many requests: wait a minute and run it again |
+| 7 | Robot map data error, also when the map is not synced to the robot yet |
+| 8 | Lift data error |
+| 9 | `check` found problems |
+| 10 | The files would change (`--check`) |
+
+### Another floor plan than the robot map
+
+You can draw on another floor plan, for example an architect's drawing. Then add the robot map image as a second layer in the **layers** tab, set its scale to about 0.05, move and turn it near the floor plan, draw constraint pairs on matching features of both, and press `Ctrl+T` to align. Name the layer image `<robot_map>.png`, or keep it in a folder named after the robot type. `export` then takes the layer transform. A floor plan of another level that is turned against the first level is not supported (see `level_transform` in [`config_template.yaml`](fleet_adapter/configs/config_template.yaml)).
+
+<img src="docs/images/image%20(6).png" alt="Layer" width="700">
+
+### Run with Docker
+
+The Docker setup in [`fleet_adapter/docker/`](fleet_adapter/docker/) runs the adapter only. Keep `run_fleet.sh` running for RMF and RMF Web.
+
+```bash
+cd fleet_adapter
+set -a; source .env; set +a
+FLEET_CONFIG="$FLEET_1_CONFIG" NAV_GRAPH="$FLEET_1_NAV_GRAPH" \
+  sudo -E docker compose -f docker/docker-compose.yaml up --build
+```
+
+Follow its log with `sudo docker logs -f docker-fleet-adapter-1`.
+
+### Repository
 
 ```text
 fleet_adapter/
-├── configs/
-│   ├── <building_name>/        Fleet YAML files, one per robot model/fleet
-│   └── visualization/         RViz and RMF Web visualisation settings
-├── maps/<building_name>/       Building map, nav graphs, dock summary, robot map assets
-├── fleet_adapter/              Python adapter package
-│   ├── fleet_adapter.py        Main adapter: parses config and registers fleet/robots with RMF
-│   ├── LionsbotRobot.py        RMF robot command handling
-│   ├── RobotClientAPI.py       LionsBot HTTP/WebSocket client
-│   ├── enums/                  Shared constants and enums
-│   └── models/                 Typed payload/domain models for robot operations
-├── launch/                     RMF core, RViz, and RMF Web launch/Compose definitions
-├── docker/                     Standalone fleet-adapter container assets (not RMF core/Web)
-├── .env.example                Local runtime settings and credential template
-├── setup.py                    Python package metadata and ROS 2 console entry points
-└── package.xml                 ROS 2 package dependencies
+├── configs/<building>/      Fleet configs. config_template.yaml is the template
+├── maps/<building>/         Building file, nav graphs, dock_summary.yaml, robot map images
+├── fleet_adapter/           Python adapter package
+├── launch/                  RMF launch file, RMF Web compose file, network check
+├── docker/                  Adapter-only container
+├── run_fleet.sh             Builds and starts RMF, RViz and RMF Web
+└── run_fleet_adapter.sh     Starts one fleet adapter
+tools/lb_rmf_setup/          The setup tool
+tools/lift_e2e/              End-to-end lift test with a fake robot
 ```
 
-The `fleet_adapter` console command is configured in [`setup.py`](fleet_adapter/setup.py); the other entry points provide the building and robot-marker visualisers. ROS 2 dependencies belong in [`package.xml`](fleet_adapter/package.xml).
+`fleet_adapter/office_new` is LionsBot's own example site. Its configs name LionsBot's robots.
 
-## Maps and visualisation
+## 6. FAQ and troubleshooting
 
-- For the detailed map-creation workflow, see [RMF map creation workflow](#rmf-map-creation-workflow).
-- Each building directory in `maps/` contains the RMF building map, exported navigation graphs, `dock_summary.yaml`, and robot map assets.
-- The LionsBot API converts the building map, fleet configuration, and robot map supplied to it into the RMF map data used in this workflow.
-- The RMF launch file is [`launch/rmf.launch.xml`](fleet_adapter/launch/rmf.launch.xml).
-- Customise RViz and RMF Web presentation in [`configs/visualization/`](fleet_adapter/configs/visualization/).
-- The standalone Docker setup in [`docker/`](fleet_adapter/docker/) packages only the fleet adapter; RMF core and RMF Web are launched by the assets in [`launch/`](fleet_adapter/launch/).
+### The adapter says `Adapter.make() returned no adapter`
 
-## Development
-
-For an adapter-only loop, source your ROS workspace, and run the adapter directly after building:
+It found no RMF traffic schedule in `SCHEDULE_TIMEOUT` seconds. Make sure RMF runs, and that `ROS_DOMAIN_ID` and `RMW_IMPLEMENTATION` in `.env` are the values of that RMF. If they are, the ROS 2 nodes cannot find each other. Run:
 
 ```bash
-ros2 run fleet_adapter fleet_adapter \
-  -c configs/<building_name>/<fleet_config>.yaml \
-  -n maps/<building_name>/<graph_idx>.yaml \
-  -d maps/<building_name>/dock_summary.yaml \
-  --server_uri ws://localhost:8000/_internal
+python3 fleet_adapter/launch/check_network.py
 ```
 
-Use the [`fleet_adapter/fleet_adapter/`](fleet_adapter/fleet_adapter/) package for runtime behavior, [`enums/`](fleet_adapter/fleet_adapter/enums/) and [`models/`](fleet_adapter/fleet_adapter/models/) for shared domain definitions, and the `test/` directories for unit tests. The runner expands environment variables in configuration files; direct invocations should use a configuration with credentials already expanded or run through an equivalent environment-expansion step.
+It finds the two usual causes and prints the fix: a firewall that drops multicast (with ufw, for example `sudo ufw allow in on wlp0s20f3 to 239.255.0.1`), or a VPN that takes all traffic. After the fix, stop and start `run_fleet.sh` too.
 
-## RMF map creation workflow
+### The robot does not go onto the dock, or it says "Destination inaccessible"
 
-### Placeholder legend
+Run `check`. The usual cause is a lane that ends on a new vertex next to the dock or its approach point, not on the point itself. Each dock needs only the lane from its approach point, which `export` draws.
 
-- `<building_name>`: the building directory name under both `maps/` and `configs/`.
-- `<rmf_map_name>`: the RMF map name used for `<rmf_map_name>.building.yaml`.
-- `<robot_map_name>`: the LionsBot robot-map name supplied to the LionsBot API.
-- `<graph_idx>`: the navigation-graph index used for `<graph_idx>.yaml`.
-- `<level_name>`: the RMF level name used in the building map and map transform configuration.
+### RMF Web does not show my new waypoint
 
-All map and configuration paths include `maps/<building_name>/` or `configs/<building_name>/`; generated building maps, dock summaries, and exported navigation graphs are stored in the corresponding `maps/<building_name>/` directory.
+RMF and RMF Web read the building file only when they start. Save it, then stop and start `run_fleet.sh` and the adapter. A waypoint also needs a name and a lane.
 
-From the building map, `config_<robot_type>.yaml`, and a LionsBot robot map to an `<rmf_map_name>.building.yaml` + `dock_summary.yaml`, and the fleet nav graph `<graph_idx>.yaml`:
+### RMF shows my robot under another name
 
-### Overview
+A ROS 2 name allows only letters, digits and underscores, so `R3SCP-B02357` becomes `R3SCP_B02357` in RMF. Use the RMF name in RMF Web and in task requests. To choose it, set `robot_config.rmf_name` in the config.
 
-```text
- robot map from LionsBot robot
-     │                        
-     │                       
-     │          Traffic editor pass 1 --> <rmf_map_name>.building.yaml (scale, naming, and transform)
-     │                        │
-     │                        v
-     └────────────────> Lionsbot API <──── configs/<building_name>/config_<robot_type>.yaml
-                             │
-                             ├── <rmf_map_name>.building.yaml + named POIs / docks / zone anchors
-                             └── dock_summary.yaml (clean paths)
-                             └── <rmf_map_name>.building.yaml (updated)
-                                     │
-                                     v
-                        Traffic editor pass 2 --> <rmf_map_name>.building.yaml (connect new points to lanes)
-                                                        │
-                                                        v
-                                           building_map_generator nav --> <graph_idx>.yaml
-```
-
-### 0. Prerequisites
-
-- **Inputs:** a LionsBot robot map, `config_<robot_type>.yaml`, and the floorplan image used to create the RMF building map
-- **Assets:** floorplan `.png` file
-- **Tooling:** [`rmf_traffic_editor`](https://github.com/open-rmf/rmf_traffic_editor)
-
-### 1. Traffic editor — pass 1
-
-Install `traffic-editor` following instructions in this [repo](https://github.com/open-rmf/rmf_traffic_editor), then:
-
-```bash
-source install/setup.bash
-traffic-editor
-```
-- Create a new `<rmf_map_name>.building.yaml`, use reference-image coordinates.
-
-<img src="docs/images/image%20(0).png" alt="Traffic Editor example" width="350">
-
-- Add a **level** with `<level_name>` (we will use L8 as an example), attach the floorplan image.
-
-<img src="docs/images/image%20(1).png" alt="Traffic Editor level setup" width="350"> <img src="docs/images/image%20(2).png" alt="Traffic Editor floorplan setup" width="350">
-
-- Add **at least one measurement** between two points with a real-world distance. Save and restart `traffic-editor` and the scale will be updated. 
-
-<img src="docs/images/image%20(3).png" alt="Traffic Editor example" width="350"> 
-
-- This scale will be your `map_transform.<level_name>.transform_values.scale` value (`rotation_degrees`, `tx_meters`, and `ty_meters` will be 0 for the 1st / global map).
-
-<img src="docs/images/image%20(4).png" alt="Traffic Editor example" width="350">
-
-- Add **at least one wall** for RMF Web to render the map.
-
-<img src="docs/images/image%20(5).png" alt="Traffic Editor example" width="350">
-
-- Save `maps/<building_name>/<rmf_map_name>.building.yaml` (for example, `maps/office/L3_pantry.building.yaml`).
-- **Do not** add vertices for docks, POIs, or cleaning zones.
-
-Output: `<rmf_map_name>.building.yaml`.
-
-#### 1.1 Adding maps with different orientation and size
-For heterogenous fleets, it is highly likely we have a map of a different scale and orientation that we will need ot align with the global map RMF refers to.
-
-- Add the new map as a 2nd layer on top of the reference map. For Lionsbot's maps, set the scale to 0.05 for a good starting point. Adjust the rotation and translation until the new map is relatively close to the original map.
-
-<img src="docs/images/image%20(6).png" alt="Traffic Editor example" width="700">
-
-- Mark matching featuers on both layers and draw constraint pairs. 
-
-<img src="docs/images/image%20(6.1).png" alt="Traffic Editor example" width="100"> 
-
-- Press `Ctrl + T` to align the maps after matching all pairs.
-
-<img src="docs/images/image%20(7).png" alt="Traffic Editor example" width="350"> <img src="docs/images/image%20(8).png" alt="Traffic Editor example" width="350">
-
-- Populate (1) `rotation_degrees`, (2) `scale` (meters per picel), (3) `tx_meters`, and (4) `ty_meters` in `config_<robot_type>.yaml`, at `map_transform.<level_name>.transform_values`. These values can be obtained from layers -> edit (choose the map added).
-
-<img src="docs/images/image%20(9).png" alt="Traffic Editor example" width="350">
-
-
-### 2. LionsBot API
-
-Provide the LionsBot API with the current `<rmf_map_name>.building.yaml`, `config_<robot_type>.yaml`, and the robot map obtained from the robot. The API adds the named vertices for markers, cleaning zones, and custom paths to the building file and creates or updates `maps/<building_name>/dock_summary.yaml`. When a name already exists, it updates that vertex's position (and a dock's heading) in place, preserving its name, properties, and graph connectivity.
-
-Note: Repeat this API step on the same `<rmf_map_name>.building.yaml` for different robot maps, robot types, or levels.
-- For heterogeneous fleets: provide the relevant robot map and `config_<robot_type>.yaml`
-- For different levels: change `<level_name>` 
-
-Outputs: updated `<rmf_map_name>.building.yaml` and `dock_summary.yaml`.
-
-### 3. Traffic editor — pass 2
-
-- Reopen the updated `<rmf_map_name>.building.yaml` with the added points.
-
-<img src="docs/images/image%20(8).png" alt="Traffic Editor example" width="700">
-
-- Connect the added vertices (chargers, lifts, docks, cleaning zones, etc.) to the graph with **lanes**.
-- For docks and cleaning-zone start points, create a nearby traffic waypoint and connect it with a short lane. Do not place these points directly on a through-traffic lane; this lets robots enter and leave without blocking passing traffic. You can use different graphs for different fleets; remember which `graph_idx` belongs to each fleet.
-- Make the lane leading to a dock approximately perpendicular to represent the robot's docking orientation.
-
-- Where practical, position vertices (waypoints, cleaning-zone start points, and docks) slightly clear of walls and other obstacles in Traffic Editor. This provides tolerance for map alignment and RMF coordinate-conversion differences.
-
-<img src="docs/images/image%20(10).png" alt="Traffic Editor example" width="350"> <img src="docs/images/image%20(11).png" alt="Traffic Editor example" width="350"> <img src="docs/images/image%20(12).png" alt="Traffic Editor example" width="350">
-
-- Save the building file.
-
-### 4. Export nav graph
-
-Per the [rmf_traffic_editor README](https://github.com/open-rmf/rmf_traffic_editor):
-
-```bash
-ros2 run rmf_building_map_tools building_map_generator nav \
-  maps/<building_name>/<rmf_map_name>.building.yaml maps/<building_name>/
-```
-Output: `<graph_idx>.yaml`, used by the fleet adapter with the corresponding `graph_idx`.
-
-
-## FAQ and troubleshooting
-
-### Which ROS 2 DDS implementation should I use?
-
-Cyclone DDS is preferred and has been the most reliable option in our experience. The Open-RMF maintainers have similarly reported that Cyclone DDS provided a better experience; see this [issue](https://github.com/open-rmf/rmf_demos/issues/316) for more information.
-
-Set the following in `.env` before starting the stack:
-
-```dotenv
-RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
-```
-
-Ensure the Cyclone DDS ROS package is installed (for Jazzy, `ros-jazzy-rmw-cyclonedds-cpp`) and use the same `ROS_DOMAIN_ID` and DDS implementation in every terminal and container that must communicate.
-
-### How do I follow fleet-adapter Docker logs?
-
-```bash
-sudo docker logs -f docker-fleet-adapter-1
-```
-
-You can also view log files in `/ws/log/`, log files are prefixed `fleet_adapter_debug`.
-
-### How do I clear lingering RMF or fleet-adapter processes?
-
-If a previous launch did not exit cleanly, first check for leftover ROS 2, RMF,
-or fleet-adapter processes:
+### RMF or adapter processes are left over
 
 ```bash
 ps -ef | grep -E '[r]os2 launch|[r]mf_|[f]leet_adapter'
 ```
 
-Gracefully stop the lingering RMF and fleet-adapter processes with:
+Stop each one with `kill <PID>`. If it is still there after a few seconds, use `kill -9 <PID>`.
 
-```bash
-pkill -INT -f 'rmf_|fleet_adapter'
-```
+## 7. Future improvements
 
-Run the check again before restarting the stack. Use `kill <PID>` rather than
-`pkill <PID>` when stopping one specific process by its PID.
-
-## Installation and references
-
-- Install ROS 2 Jazzy using the [official ROS 2 Jazzy installation guide](https://docs.ros.org/en/jazzy/Installation.html).
-- Install Open-RMF and its dependencies from [open-rmf/rmf](https://github.com/open-rmf/rmf).
-- For fleet-adapter integration concepts and APIs, see the [RMF fleet adapter documentation](https://docs.ros.org/en/iron/p/rmf_fleet_adapter/index.html).
-- For using traffic-editor, see [the official documentation](https://osrf.github.io/ros2multirobotbook/traffic-editor.html).
-- For Traffic Editor workflow and deployment context, see [Scaling Open-RMF from a Test Bench → Lab → Controlled Environment → Production](https://roscon.ros.org/2024/talks/Scaling_Open-RMF_from_a_Test_Bench_%E2%86%92_Lab_%E2%86%92_Controlled_Environment_%E2%86%92_Production.pdf).
-
-## Future improvements
-
-### More targetted error handling 
-
-The adapter currently retries command timeouts / reports `execution.error()` + `finished()` / sends one RMF Web
-`AlertRequest` (only when a robot remains docked without charging). Future developers
-can map LionsBot vendor error codes to the RMF API that best matches the
-condition. Examples include but are not limited to:
-
-| API | Scope | Changes action? | Effect |
-| --- | --- | --- | --- |
-| `execution.delayed(text)` | Current task event | No | Records a temporary delay and warning log; the event remains active. |
-| `execution.blocked(text)` | Current task event | No | Records that progress is blocked and adds a warning log; the event remains active. |
-| `execution.error(text)` | Current task event | Only if `finished()` is omitted | Records an error and error log. Calling `finished()` completes the event; omitting it prevents RMF from advancing the event. |
-| `update_position(...)` + `replan()` | Robot traffic plan | Yes | Updates RMF with the latest position and requests a new route. |
-| `interrupt(labels, callback)` | Whole current task | Yes | Pauses the task and yields robot control until the returned interruption handle is resumed. |
-| `set_commission(Commission.decommission())` | Future task assignment | Yes, for future work | Prevents new dispatched/direct tasks and idle behaviour; it does not cancel the active task. |
-| `AlertRequest` | RMF Web | No | Creates a stock RMF Web bell/popup alert with acknowledgement; it does not control the robot or task. |
-
-### Network security improvements
-
-Refer to the [Open-RMF deployment template](https://github.com/open-rmf/rmf_deployment_template)
-as the production deployment reference. Keep DDS/ROS 2 traffic inside the
-trusted RMF network and expose only the RMF Web API gateway to users and
-external systems over HTTPS/WSS. The gateway provides the boundary for
-authentication and authorization, rather than exposing DDS discovery or ROS 2
-todocs/images on the building network.
-
-The template deploys RMF with Kubernetes/k3s and an ingress, Keycloak-based IAM,
-and TLS certificate provisioning. We can replace Docker
-host networking with isolated container or Kubernetes networking; limit ingress
-to ports 80/443; use TLS and authenticated API tokens; and use a bridge such as
-Zenoh for fleet adapters that must communicate across untrusted or multicast-
-restricted networks. Restrict DDS interfaces and network policies to the RMF
-components that actually require DDS communication.
-
-
-### Multi-level support 
-
-- Add support for multi-level maps, including end-to-end validation of the `level_transform` configuration.
-- Integrate lift support for inter-level navigation.
-
-
-### RMF Schedule support
-
-- Compatibility with RMF scheduling features have not tested.
+- Map LionsBot vendor error codes, beyond `Estop`, `Error` and `Offline`, to the RMF call that fits. `replan()`, `interrupt()` and `set_commission()` are not used yet. In `rmf_adapter` 2.7.2 for Python, only the execution of an action has `delayed`, `blocked` and `error`. A navigation command has none.
+- Network security for a deployment: the [Open-RMF deployment template](https://github.com/open-rmf/rmf_deployment_template) shows Kubernetes, an ingress, Keycloak and TLS for the users of RMF Web, and a bridge such as Zenoh for networks that are not trusted. Keep `SERVER_URI` and DDS traffic on a trusted network.
+- A level whose floor plan is turned against the first level, and the same waypoint name on two levels.
+- Lift commands out of the experimental features, after tests on real lifts.
+- RMF Web runs a scheduled task with the same dispatch as a task that you send now, so the adapter needs no change. Its scheduler uses the `timezone` setting of the RMF Web API server, `UTC` by default. Not yet run on a real robot.

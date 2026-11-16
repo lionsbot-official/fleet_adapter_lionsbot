@@ -30,9 +30,16 @@ from .utils.Coordinate import LionsbotCoord
 from .utils import constants
 
 from .enums.enums import CommandResult
+from .enums.enums import LiftCommand
+from .enums.enums import LiftMoveState
+from .enums.enums import LiftMoveStatus
 from .enums.enums import RobotRuntimeStatusText
 from .enums.enums import OperationEndStatus
 from .enums.enums import OperationStatus
+from .enums.enums import RobotStopCommand
+from .LiftMoveTracker import LiftCommandSendError
+from .LiftMoveTracker import LiftMapUnavailableError
+from .LiftMoveTracker import LiftMoveTracker
 
 from .models.NavigateContent import NavigateContent
 from .models.CleanProcessContent import CleanProcessContent
@@ -87,6 +94,7 @@ class RobotAPI:
         self._operation_success_fallback_seen_at = {}
         self._pending_failed_navigation_end_status = {}
         self._pending_failed_navigation_end_status_since = {}
+        self.lift_moves = LiftMoveTracker()
 
         self.robot_xy_goal_tolerances = {}
         self.operation_end_status_grace_seconds = 60
@@ -562,6 +570,42 @@ class RobotAPI:
         self._log_http_send('PUT', url, headers=headers, json_payload=json)
         return requests.put(url, headers=headers, json=json, timeout=RobotAPI.REQUEST_TIMEOUT_SECONDS)
 
+    def _on_robot_status_message(self, wsc, message):
+        if wsc is self.robot_status_ws_connection:
+            with self._lock:
+                self._last_status_ws_message_at = time.monotonic()
+        json_message = json.loads(message)
+
+        with self._lock:
+            operation_fb = json_message.get('operation_fb')
+            if operation_fb == 'ping':
+                return
+            robot_id = json_message.get('robot_id')
+            if robot_id is None:
+                return
+            robot_encoding_id = self._robot_state_key(robot_id)
+
+            if operation_fb == 'touchscreen_robot_status':
+                logger.debug('WS RECV status full_message=%s', message)
+                robot_status = json_message['content']
+
+                status_snapshot = RobotAPI._cached_touchscreen_robot_status(
+                    operation_fb,
+                    robot_status,
+                    json_message.get('timestamp'))
+                self.robot_status[robot_encoding_id] = status_snapshot
+            elif operation_fb in (
+                OperationEndStatus.P2P_END_STATUS,
+                OperationEndStatus.CLEAN_END_STATUS,
+                OperationEndStatus.DOCK_END_STATUS,
+                OperationEndStatus.UNDOCK_END_STATUS,
+            ):
+                logger.debug('WS RECV end_status full_message=%s', message)
+                self.robot_operation_end_status[robot_encoding_id] = json_message
+            elif self.lift_moves.handle_message(
+                    robot_encoding_id, json_message):
+                logger.debug('WS RECV lift full_message=%s', message)
+
     def connect_to_robot_status_ws(self):
         self.refresh_expired_token()
         if self.token is None:
@@ -569,37 +613,7 @@ class RobotAPI:
             return
 
         def on_message(wsc, message):
-            if wsc is self.robot_status_ws_connection:
-                with self._lock:
-                    self._last_status_ws_message_at = time.monotonic()
-            json_message = json.loads(message)
-
-            with self._lock:
-                operation_fb = json_message.get('operation_fb')
-                if operation_fb == 'ping':
-                    return
-                robot_id = json_message.get('robot_id')
-                if robot_id is None:
-                    return
-                robot_encoding_id = self._robot_state_key(robot_id)
-
-                if operation_fb == 'touchscreen_robot_status':
-                    logger.debug('WS RECV status full_message=%s', message)
-                    robot_status = json_message['content']
-
-                    status_snapshot = RobotAPI._cached_touchscreen_robot_status(
-                        operation_fb,
-                        robot_status,
-                        json_message.get('timestamp'))
-                    self.robot_status[robot_encoding_id] = status_snapshot
-                elif operation_fb in (
-                    OperationEndStatus.P2P_END_STATUS,
-                    OperationEndStatus.CLEAN_END_STATUS,
-                    OperationEndStatus.DOCK_END_STATUS,
-                    OperationEndStatus.UNDOCK_END_STATUS,
-                ):
-                    logger.debug('WS RECV end_status full_message=%s', message)
-                    self.robot_operation_end_status[robot_encoding_id] = json_message
+            self._on_robot_status_message(wsc, message)
 
         def on_error(wsc, error):
             logger.info(error)
@@ -1445,6 +1459,89 @@ class RobotAPI:
                 eta_seconds = None
 
         return OperationStatus(CommandResult.RUNNING, eta_seconds)
+
+    def lift_command_map(
+            self,
+            robot_encoding_id: str,
+            map_name: str,
+            map_level) -> dict:
+        '''Return the robot map that a lift command must name.
+
+        Raises LiftMapUnavailableError when the map is not found.
+        '''
+        map_data = self.get_map(
+            map_name=map_name,
+            robot_encoding_id=robot_encoding_id,
+            map_level=map_level)
+        if map_data is None:
+            raise LiftMapUnavailableError(
+                robot_encoding_id, map_name, map_level)
+        return map_data
+
+    def send_lift_command(
+            self,
+            robot_encoding_id: str,
+            command: LiftCommand,
+            lift: str,
+            robot_map: dict) -> str:
+        '''Send a lift command and return its request ID.
+
+        The command names the robot map from lift_command_map(), so the
+        robot refuses the move when it is on a different map. This sends at
+        once, with no other request. Raises a LiftCommandError when the
+        command is not sent.
+        '''
+        self.refresh_expired_token()
+
+        request_id = self.lift_moves.begin(robot_encoding_id, command)
+        payload = {
+            'operation_cmd': command.value,
+            'robot_id': robot_encoding_id,
+            'content': {
+                'request_id': request_id,
+                'lift': lift,
+                'map': {
+                    'building': robot_map.get('building'),
+                    'level': robot_map.get('level'),
+                    'map_name': robot_map.get('name'),
+                },
+            },
+        }
+        lift_message = json.dumps(payload)
+        logger.debug('WS SEND [robotstatus] full_message=%s', lift_message)
+        try:
+            self.robot_status_ws_connection.send(lift_message)
+        except Exception as err:
+            self.lift_moves.discard(robot_encoding_id, request_id)
+            raise LiftCommandSendError(robot_encoding_id, command) from err
+        return request_id
+
+    def lift_move_status(
+            self, robot_encoding_id: str) -> LiftMoveStatus | None:
+        '''Report the robot's lift command, or None when it has none.
+
+        When the robot sends no end status in the watchdog time, this stops
+        the robot one time and reports LiftMoveState.TIMED_OUT.
+        '''
+        status = self.lift_moves.status(robot_encoding_id)
+        if status is not None and \
+                status.state == LiftMoveState.TIMED_OUT and \
+                self.lift_moves.claim_stop(robot_encoding_id):
+            logger.error(
+                'Robot [%s] sent no end status for lift command [%s] '
+                '(request_id %s); stopping the robot',
+                robot_encoding_id, status.command.value, status.request_id)
+            self.abort_lift_move(robot_encoding_id)
+        return status
+
+    def abort_lift_move(self, robot_encoding_id: str) -> bool:
+        '''Stop the robot's lift move; its end status then reports the stop.'''
+        return self._send_robot_status_command(
+            robot_encoding_id, RobotStopCommand.P2P_STOP)
+
+    def clear_lift_move(self, robot_encoding_id: str):
+        '''Forget the robot's lift command when it has ended.'''
+        self.lift_moves.clear(robot_encoding_id)
 
     def localize(self, dock_home_position: LionsbotCoord, robot_encoding_id: str) -> bool:
         self.refresh_expired_token()

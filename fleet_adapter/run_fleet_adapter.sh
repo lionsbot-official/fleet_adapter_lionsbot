@@ -42,7 +42,7 @@ fi
 
 export ROS_DOMAIN_ID="${ROS_DOMAIN_ID:-0}"
 export RMW_IMPLEMENTATION="${RMW_IMPLEMENTATION:-rmw_cyclonedds_cpp}"
-export CYCLONEDDS_URI='<CycloneDDS><Domain id="any"><Discovery><ParticipantIndex>none</ParticipantIndex></Discovery></Domain></CycloneDDS>'
+export CYCLONEDDS_URI="${CYCLONEDDS_URI:-<CycloneDDS><Domain id=\"any\"><Discovery><ParticipantIndex>none</ParticipantIndex></Discovery></Domain></CycloneDDS>}"
 
 set +u
 if [[ -f /opt/ros/jazzy/setup.bash ]]; then
@@ -58,7 +58,6 @@ set -u
 FOLDER_NAME="${FOLDER_NAME:-office_new}"
 SERVER_URI="${SERVER_URI:-ws://localhost:8000/_internal}"
 USE_SIM_TIME="${USE_SIM_TIME:-false}"
-SCHEDULE_TIMEOUT="${SCHEDULE_TIMEOUT:-60}"
 
 CONFIG_DIR="$SCRIPT_DIR/configs/$FOLDER_NAME"
 MAP_DIR="$SCRIPT_DIR/maps/$FOLDER_NAME"
@@ -100,19 +99,6 @@ with open(source_path, "r") as source_file:
 with open(target_path, "w") as target_file:
     yaml.safe_dump(config, target_file, sort_keys=False)
 ' "$CONFIG_FILE" "$EXPANDED_CONFIG_FILE"
-
-echo "Waiting up to ${SCHEDULE_TIMEOUT}s for /rmf_traffic_schedule..."
-for ((attempt = 1; attempt <= SCHEDULE_TIMEOUT; attempt++)); do
-    if ros2 node list 2>/dev/null | grep -qx '/rmf_traffic_schedule'; then
-        echo "Found /rmf_traffic_schedule."
-        break
-    fi
-    if (( attempt == SCHEDULE_TIMEOUT )); then
-        echo "Timed out waiting for /rmf_traffic_schedule." >&2
-        exit 1
-    fi
-    sleep 1
-done
 
 echo "Starting fleet adapter..."
 ros2 run fleet_adapter fleet_adapter \

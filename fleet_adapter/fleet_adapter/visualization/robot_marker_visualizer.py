@@ -1,27 +1,27 @@
-"""Custom RViz-only fleet and schedule markers."""
+"""
+Custom RViz-only schedule and map markers.
+
+The RMF visualizers draw one level flat at z = 0. This node restyles their
+markers and puts them in the tf frame of that level, so they sit at the level
+elevation in the 3D view. building_3d_visualizer draws the robots.
+"""
 import copy
-import math
 import rclpy
 from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
-from rmf_fleet_msgs.msg import FleetState
 from visualization_msgs.msg import Marker, MarkerArray
-from .colors import (NOSE_BLUE, R3_BLUE,
-                      R3_SCHEDULE_BLUE, R5_BLUE,
-                      R5_SCHEDULE_BLUE)
+from .colors import R3_BLUE, R3_SCHEDULE_BLUE, R5_BLUE, R5_SCHEDULE_BLUE
 
 
 class RobotMarkerVisualizer(Node):
     def __init__(self):
         super().__init__('robot_marker_visualizer')
-        self.declare_parameter('fleet_states_topic', '/fleet_states')
+        self.declare_parameter('floor_name', 'map')
+        self.frame = self.get_parameter('floor_name').value
         self.declare_parameter('schedule_topic', '/schedule_markers')
         self.declare_parameter('map_markers_topic', '/map_markers')
-        self.fleet_pub = self.create_publisher(MarkerArray, '/custom_fleet_markers', 1)
         self.schedule_pub = self.create_publisher(MarkerArray, '/custom_schedule_markers', 1)
         self.schedule_path_pub = self.create_publisher(MarkerArray, '/custom_schedule_paths', 1)
-        self.create_subscription(FleetState, self.get_parameter('fleet_states_topic').value,
-                                 self._fleet_callback, 10)
         # The RMF schedule visualizer publishes live updates. Subscribe with
         # volatile durability so this remains compatible with that publisher.
         schedule_qos = QoSProfile(depth=10)
@@ -40,51 +40,6 @@ class RobotMarkerVisualizer(Node):
         self.create_subscription(MarkerArray, self.get_parameter('map_markers_topic').value,
                                  self._map_markers_callback, map_input_qos)
 
-    @staticmethod
-    def _marker(*, ns, marker_id, robot, shape, color, scale, z):
-        m = Marker()
-        m.header.frame_id = robot.location.level_name
-        m.ns, m.id, m.type, m.action = ns, marker_id, shape, Marker.ADD
-        m.pose.position.x, m.pose.position.y, m.pose.position.z = robot.location.x, robot.location.y, z
-        m.pose.orientation.z = math.sin(robot.location.yaw / 2.0)
-        m.pose.orientation.w = math.cos(robot.location.yaw / 2.0)
-        m.scale.x, m.scale.y, m.scale.z = scale
-        m.color.r, m.color.g, m.color.b, m.color.a = (*color, 1.0)
-        return m
-
-    def _fleet_callback(self, fleet):
-        result = MarkerArray()
-        for index, robot in enumerate(fleet.robots):
-            is_r5 = fleet.name.lower().startswith('r5')
-            if is_r5:
-                body_shape = Marker.CYLINDER
-                body_color = R5_BLUE
-                body_width, body_depth, body_height = 0.6, 0.6, 0.9
-                nose_color = NOSE_BLUE
-                nose_width, nose_depth, nose_height = 0.25, 0.25, 0.25
-            else:
-                body_shape = Marker.CUBE
-                body_color = R3_BLUE
-                body_width, body_depth, body_height = 0.4, 0.4, 0.6
-                nose_color = NOSE_BLUE
-                nose_width, nose_depth, nose_height = 0.2, 0.2, 0.2
-            nose_overlap = nose_width * 0.75
-            body = self._marker(
-                ns=fleet.name, marker_id=index, robot=robot, shape=body_shape,
-                color=body_color, scale=(body_width, body_depth, body_height),
-                z=body_height / 2.0)
-            result.markers.append(body)
-            nose = self._marker(
-                ns=f'{fleet.name}_nose', marker_id=index, robot=robot,
-                shape=Marker.CUBE, color=nose_color,
-                scale=(nose_width, nose_depth, nose_height),
-                z=body_height * 0.75)
-            nose_forward_distance = body_width / 2.0 + nose_width / 2.0 - nose_overlap
-            nose.pose.position.x += math.cos(robot.location.yaw) * nose_forward_distance
-            nose.pose.position.y += math.sin(robot.location.yaw) * nose_forward_distance
-            result.markers.append(nose)
-        self.fleet_pub.publish(result)
-
     def _schedule_callback(self, incoming):
         scheduled_discs = MarkerArray()
         scheduled_paths = MarkerArray()
@@ -93,7 +48,7 @@ class RobotMarkerVisualizer(Node):
         scheduled_disc_thickness = 0.01
         scheduled_path_width_factor = 0.4
         for source_marker in incoming.markers:
-            source_marker.header.frame_id = source_marker.header.frame_id or 'map'
+            source_marker.header.frame_id = self.frame
             # Keep schedule paths/disks above map lanes and waypoints.
             if source_marker.type in (Marker.SPHERE, Marker.CYLINDER):
                 disk_key = (source_marker.ns, source_marker.id)
@@ -129,6 +84,7 @@ class RobotMarkerVisualizer(Node):
         waypoint_diameter = lane_width * 1.5
         waypoint_thickness = 0.0005
         for marker in incoming.markers:
+            marker.header.frame_id = self.frame
             namespace = marker.ns.lower()
             if 'lanes/' in namespace:
                 marker.scale.x = lane_width

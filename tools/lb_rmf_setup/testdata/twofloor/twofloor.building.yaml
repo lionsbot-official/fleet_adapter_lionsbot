@@ -1,0 +1,32 @@
+coordinate_system: reference_image
+graphs:
+  {}
+levels:
+  L1:
+    drawing:
+      filename: l1.png
+    elevation: 0
+    fiducials:
+      - [100, 100, north]
+      - [200, 300, south]
+    lanes: []
+    measurements:
+      - [0, 1, {distance: [3, 5]}]
+    vertices:
+      - [100, 100, 0, ""]
+      - [200, 100, 0, ""]
+  L3:
+    drawing:
+      filename: l3.png
+    elevation: 10
+    fiducials:
+      - [100, 100, north]
+      - [200, 300, south]
+    lanes: []
+    measurements:
+      - [0, 1, {distance: [3, 5]}]
+    vertices:
+      - [100, 100, 0, ""]
+      - [200, 100, 0, ""]
+lifts: {}
+name: twofloor

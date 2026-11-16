@@ -69,6 +69,81 @@ class OperationEndStatus:
     CLEAN_END_STATUS = 'clean_end_status'
     DOCK_END_STATUS = 'dock_end_status'
     UNDOCK_END_STATUS = 'undock_end_status'
+    LIFT_ENTER_END_STATUS = 'lift_enter_end_status'
+    LIFT_EXIT_END_STATUS = 'lift_exit_end_status'
+
+
+class RobotStopCommand:
+    P2P_STOP = 'p2p_stop'
+
+
+class LiftCommand(Enum):
+    ENTER = 'lift_enter_start'
+    EXIT = 'lift_exit_start'
+
+    @property
+    def end_status(self) -> str:
+        return _LIFT_END_STATUSES[self]
+
+
+_LIFT_END_STATUSES = {
+    LiftCommand.ENTER: OperationEndStatus.LIFT_ENTER_END_STATUS,
+    LiftCommand.EXIT: OperationEndStatus.LIFT_EXIT_END_STATUS,
+}
+
+
+class LiftRefusalReason:
+    NO_ROBOT_ANSWER = 'RCSE00006'
+    ROBOT_MODEL_NOT_SUPPORTED = 'RCSE00005'
+
+
+class LiftMoveState(Enum):
+    AWAITING_ANSWER = 'awaiting_answer'
+    RUNNING = 'running'
+    SUCCEEDED = 'succeeded'
+    FAILED = 'failed'
+    REFUSED = 'refused'
+    TIMED_OUT = 'timed_out'
+
+    @property
+    def ended(self) -> bool:
+        return self not in (
+            LiftMoveState.AWAITING_ANSWER, LiftMoveState.RUNNING)
+
+
+# The values of door_state and motion_state in rmf_lift_msgs/LiftState.
+class LiftDoorState(IntEnum):
+    CLOSED = 0
+    MOVING = 1
+    OPEN = 2
+
+
+class LiftMotionState(IntEnum):
+    STOPPED = 0
+    UP = 1
+    DOWN = 2
+    UNKNOWN = 3
+
+
+class LiftCarProblem(Enum):
+    NO_STATE = 'no_state'
+    STALE_STATE = 'stale_state'
+    OTHER_SESSION = 'other_session'
+    OTHER_FLOOR = 'other_floor'
+    NOT_STOPPED = 'not_stopped'
+    DOORS_NOT_OPEN = 'doors_not_open'
+    CAR_MOVED = 'car_moved'
+
+
+@dataclass(frozen=True)
+class LiftMoveStatus:
+    state: LiftMoveState
+    command: LiftCommand
+    request_id: str
+    error_code: str | None = None
+    reason_code: str | None = None
+    reason: str | None = None
+    aborted: bool = False
 
 class CommandKind(Enum):
     P2P = "p2p"
@@ -77,6 +152,7 @@ class CommandKind(Enum):
     UNDOCK = "undock"
     CANCEL = "cancel"
     STOP = "stop"
+    LOCALIZE = "localize"
 
 @dataclass
 class CommandEvent:
@@ -99,6 +175,8 @@ class CommandState(Enum):
     CLEANING = "cleaning"
     DOCKING = "docking"
     UNDOCKING = "undocking"
+    LIFT_MOVE = "lift_move"
+    LOCALIZING = "localizing"
     RMF_INVALIDATED = "rmf_invalidated"
     STOPPING = "stopping"
     CANCELING = "canceling"
